@@ -1,26 +1,19 @@
+// GameViewModel.kt
 package com.boxmerger
 
 import android.app.Application
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.setValue
-import com.boxmerger.model.BigNumber
-import com.boxmerger.model.CurrencyType
-import com.boxmerger.model.GridItem
-import com.boxmerger.model.UpgradeManager
-import com.boxmerger.model.CurrencyManager
-import com.boxmerger.model.UpgradeDefinition
-import com.boxmerger.model.gemAutoSpeedUpgrade
-import com.boxmerger.model.gemIncreaseChanceUpgrade
-import com.boxmerger.model.gemMoreBoxesUpgrade
-import com.boxmerger.model.gemMorePrestigeUpgrade
-import com.boxmerger.model.presMoreBoxesUpgrade
-import com.boxmerger.model.presMoreGemsUpgrade
-import com.boxmerger.model.presMorePrestigeUpgrade
+import com.boxmerger.logic.AchievementsLogic
+import com.boxmerger.logic.GameLogic
+import com.boxmerger.logic.GemUpgradesLogic
+import com.boxmerger.logic.PrestigeLogic
+import com.boxmerger.model.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -29,8 +22,11 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
+
     val currencyManager = CurrencyManager()
     val upgradeManager = UpgradeManager()
+    val achievementManager = AchievementManager()
+    val stats = GameStats()
 
     // 5x4 grid = 20 cells
     private val _gridItems = mutableStateListOf<GridItem?>().apply {
@@ -38,42 +34,73 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
     val gridItems: List<GridItem?> get() = _gridItems
 
-    // Stats
-    var manualMerges by mutableStateOf(0)
-        private set
-    var autoMerges by mutableStateOf(0)
-        private set
-    val totalMerges: Int get() = manualMerges + autoMerges
+    // Flags (for achievements/tab visibility)
+    private val _flags = mutableStateListOf<String>()
+    val flags: Set<String> get() = _flags.toSet()
 
+    // Stats exposed for UI
     var playtimeSeconds by mutableStateOf(0L)
         private set
-
-    var totalPrestiges by mutableStateOf(0)
-        private set
-
-    val autoMergerUnlocked: Boolean get() = totalPrestiges > 0
     var autoMergerEnabled by mutableStateOf(false)
+
+    var totalPrestiges: Int
+        get() = stats.get("total_prestiges").toInt()
+        private set(value) { stats.set("total_prestiges", value.toLong()) }
+
+    val autoMergerUnlocked: Boolean get() = hasFlag("auto_merger_unlocked")
 
     private var nextItemId = 1L
     private val prefs = application.getSharedPreferences("box_merger_prefs", Context.MODE_PRIVATE)
 
+    // Snapshot for conditions
+    val state: GameState
+        get() = GameState(currencyManager, upgradeManager, stats, flags)
+
     init {
+        registerAllDefinitions()
         loadGame()
+        startLoops()
+    }
+
+    private fun registerAllDefinitions() {
+        upgradeManager.registerAll(GameLogic.ALL)
+        upgradeManager.registerAll(GemUpgradesLogic.ALL)
+        upgradeManager.registerAll(PrestigeLogic.ALL)
+        achievementManager.registerAll(AchievementsLogic.ALL)
+    }
+
+    private fun startLoops() {
         startPlaytimeTracker()
         startPassiveIncomeLoop()
         startSpawnerLoop()
         startAutoMergerLoop()
         startAutoSaveLoop()
+        startConditionCheckLoop()
     }
+
+    // --- Flags ---
+
+    fun setFlag(flag: String) {
+        if (!_flags.contains(flag)) {
+            _flags.add(flag)
+        }
+    }
+
+    fun hasFlag(flag: String): Boolean = _flags.contains(flag)
+
+    // --- Playtime ---
 
     private fun startPlaytimeTracker() {
         viewModelScope.launch {
             while (true) {
                 delay(1000L)
                 playtimeSeconds++
+                stats.set("playtime_seconds", playtimeSeconds)
             }
         }
     }
+
+    // --- Passive income ---
 
     private var passiveJob: Job? = null
     private fun startPassiveIncomeLoop() {
@@ -88,28 +115,44 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 if (totalEarnings > 0.0) {
-                    // Apply Multipliers: Box upgrades + Prestige passive bonus (+1% per prestige)
-                    val boxMultiplier = gemMoreBoxesUpgrade.effectFormula(upgradeManager.getLevel(gemMoreBoxesUpgrade.id)) *
-                            presMoreBoxesUpgrade.effectFormula(upgradeManager.getLevel(presMoreBoxesUpgrade.id)) *
-                            (1.0 + 0.01 * currencyManager.prestige.mantissa * 10.0.pow(currencyManager.prestige.exponent.toDouble())) // simplified prestige count
+                    val boxMultiplier =
+                        GemUpgradesLogic.gemMoreBoxesUpgrade.effectFormula(
+                            upgradeManager.getLevel(GemUpgradesLogic.gemMoreBoxesUpgrade.id)
+                        ) *
+                                PrestigeLogic.presMoreBoxesUpgrade.effectFormula(
+                                    upgradeManager.getLevel(PrestigeLogic.presMoreBoxesUpgrade.id)
+                                ) *
+                                (1.0 + 0.01 * currencyManager.getBalance(Currencies.PRESTIGE).toDouble())
 
                     val finalEarnings = totalEarnings * boxMultiplier
-                    currencyManager.add(CurrencyType.BOXES, BigNumber(finalEarnings))
+                    currencyManager.add(Currencies.BOXES, BigNumber.of(finalEarnings))
                 }
             }
         }
     }
+
+    // --- Spawner ---
 
     private var spawnerJob: Job? = null
     private fun startSpawnerLoop() {
         spawnerJob?.cancel()
         spawnerJob = viewModelScope.launch {
             while (true) {
-                val interval = upgradeManager.getSpawnIntervalMs()
+                val interval = getSpawnIntervalMs()
                 delay(interval)
                 spawnSequentialItem()
             }
         }
+    }
+
+    fun restartSpawner() {
+        startSpawnerLoop()
+    }
+
+    private fun getSpawnIntervalMs(): Long {
+        val rateLevel = upgradeManager.getLevel(GameLogic.spawnRateUpgrade.id)
+        val seconds = GameLogic.spawnRateUpgrade.effectFormula(rateLevel)
+        return maxOf(100L, (seconds * 1000.0).toLong())
     }
 
     fun spawnSequentialItem() {
@@ -120,13 +163,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun checkGemDrop() {
-        val chance = gemIncreaseChanceUpgrade.effectFormula(upgradeManager.getLevel(gemIncreaseChanceUpgrade.id))
-        if (Random.nextDouble() * 100.0 < chance) {
-            val gemMultiplier = presMoreGemsUpgrade.effectFormula(upgradeManager.getLevel(presMoreGemsUpgrade.id))
-            currencyManager.add(CurrencyType.GEM, 1.0 * gemMultiplier)
-        }
-    }
+    // --- Merging ---
 
     fun moveOrMerge(fromIndex: Int, toIndex: Int, isAuto: Boolean = false) {
         if (fromIndex !in 0..19 || toIndex !in 0..19 || fromIndex == toIndex) return
@@ -140,13 +177,19 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val newTier = target.tier + 1
             _gridItems[toIndex] = GridItem(nextItemId++, newTier)
             _gridItems[fromIndex] = null
-            currencyManager.add(CurrencyType.BOXES, BigNumber(10.0 * newTier))
+            currencyManager.add(Currencies.BOXES, BigNumber.of(10.0 * newTier))
 
             if (isAuto) {
-                autoMerges++
+                stats.increment("auto_merges")
             } else {
-                manualMerges++
+                stats.increment("manual_merges")
             }
+            stats.increment("total_merges")
+
+            if (newTier > stats.get("highest_tier")) {
+                stats.set("highest_tier", newTier.toLong())
+            }
+
             checkGemDrop()
         } else {
             _gridItems[toIndex] = source
@@ -154,12 +197,28 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun checkGemDrop() {
+        val chance = GemUpgradesLogic.gemIncreaseChanceUpgrade.effectFormula(
+            upgradeManager.getLevel(GemUpgradesLogic.gemIncreaseChanceUpgrade.id)
+        )
+        if (Random.nextDouble() * 100.0 < chance) {
+            val gemMultiplier = PrestigeLogic.presMoreGemsUpgrade.effectFormula(
+                upgradeManager.getLevel(PrestigeLogic.presMoreGemsUpgrade.id)
+            )
+            currencyManager.add(Currencies.GEM, BigNumber.of(1.0 * gemMultiplier))
+        }
+    }
+
+    // --- Auto merger ---
+
     private var autoMergerJob: Job? = null
     private fun startAutoMergerLoop() {
         autoMergerJob?.cancel()
         autoMergerJob = viewModelScope.launch {
             while (true) {
-                val speedSeconds = gemAutoSpeedUpgrade.effectFormula(upgradeManager.getLevel(gemAutoSpeedUpgrade.id))
+                val speedSeconds = GemUpgradesLogic.gemAutoSpeedUpgrade.effectFormula(
+                    upgradeManager.getLevel(GemUpgradesLogic.gemAutoSpeedUpgrade.id)
+                )
                 delay((speedSeconds * 1000.0).toLong())
 
                 if (autoMergerUnlocked && autoMergerEnabled) {
@@ -170,14 +229,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun performAutoMerge() {
-        // Scan from top-left to bottom-right (0 to 19)
         for (i in 0 until 20) {
             val itemI = _gridItems[i] ?: continue
-            // Find any subsequent slot j > i with the same tier
             for (j in (i + 1) until 20) {
                 val itemJ = _gridItems[j]
                 if (itemJ != null && itemJ.tier == itemI.tier) {
-                    // Merge j into i (most top-left slot)
                     moveOrMerge(j, i, isAuto = true)
                     return
                 }
@@ -185,32 +241,55 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- Condition check loop (achievements, unlocks) ---
+
+    private fun startConditionCheckLoop() {
+        viewModelScope.launch {
+            while (true) {
+                delay(500L)
+                achievementManager.checkAll(state, this@GameViewModel)
+                upgradeManager.checkUnlocks(this@GameViewModel)
+            }
+        }
+    }
+
+    // --- Upgrades ---
+
     fun buyUpgrade(definition: UpgradeDefinition) {
         val success = upgradeManager.purchaseUpgrade(definition, currencyManager)
         if (success) {
-            if (definition.id == "spawn_tier") {
-                val newTier = upgradeManager.spawnTierLevel
-                for (i in _gridItems.indices) {
-                    val item = _gridItems[i]
-                    if (item != null && item.tier < newTier) {
-                        _gridItems[i] = item.copy(tier = newTier)
-                    }
-                }
-            } else if (definition.id == "spawn_rate") {
-                startSpawnerLoop()
-            }
+            definition.onPurchase?.invoke(this)
             saveGame()
         }
     }
 
+    fun upgradeGridItemsToTier(newTier: Int) {
+        for (i in _gridItems.indices) {
+            val item = _gridItems[i]
+            if (item != null && item.tier < newTier) {
+                _gridItems[i] = item.copy(tier = newTier)
+            }
+        }
+    }
+
+    // --- Prestige ---
+
     fun calculatePrestigeGain(): BigNumber {
-        val boxesDouble = currencyManager.boxes.mantissa * 10.0.pow(currencyManager.boxes.exponent.toDouble())
-        val base = Math.pow(sqrt(boxesDouble-1e6), 0.3) - 10
-        if (base < 0 || base.isNaN()) return BigNumber.ZERO
-        val multiplier = gemMorePrestigeUpgrade.effectFormula(upgradeManager.getLevel(gemMorePrestigeUpgrade.id)) *
-                presMorePrestigeUpgrade.effectFormula(upgradeManager.getLevel(presMorePrestigeUpgrade.id))
-        val gain = maxOf(0.0, base * multiplier)
-        return BigNumber(gain)
+        val boxes = currencyManager.getBalance(Currencies.BOXES)
+        val base = sqrt(boxes.toDouble() - 1e6)
+        if (base.isNaN() || base < 0) return BigNumber.ZERO
+        val inner = base.pow(0.3) - 10
+        if (inner < 0 || inner.isNaN()) return BigNumber.ZERO
+
+        val multiplier =
+            GemUpgradesLogic.gemMorePrestigeUpgrade.effectFormula(
+                upgradeManager.getLevel(GemUpgradesLogic.gemMorePrestigeUpgrade.id)
+            ) *
+                    PrestigeLogic.presMorePrestigeUpgrade.effectFormula(
+                        upgradeManager.getLevel(PrestigeLogic.presMorePrestigeUpgrade.id)
+                    )
+        val gain = maxOf(0.0, inner * multiplier)
+        return BigNumber.of(gain)
     }
 
     val canPrestige: Boolean
@@ -223,24 +302,25 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (!canPrestige) return
         val gain = calculatePrestigeGain()
         if (gain.compareTo(BigNumber.ZERO) > 0) {
-            currencyManager.add(CurrencyType.PRESTIGE, gain)
-            totalPrestiges++
+            currencyManager.add(Currencies.PRESTIGE, gain)
+            totalPrestiges = totalPrestiges + 1
             currencyManager.resetForPrestige()
-            upgradeManager.setLevel("spawn_tier", 1)
-            upgradeManager.setLevel("spawn_rate", 1)
+            upgradeManager.setLevel(GameLogic.spawnTierUpgrade.id, 1)
+            upgradeManager.setLevel(GameLogic.spawnRateUpgrade.id, 1)
             for (i in _gridItems.indices) {
                 _gridItems[i] = null
             }
             _gridItems[7] = GridItem(nextItemId++, 1)
             _gridItems[12] = GridItem(nextItemId++, 1)
+            setFlag("has_prestiged")
             saveGame()
         }
     }
 
-    private var autoSaveJob: Job? = null
+    // --- Save / Load ---
+
     private fun startAutoSaveLoop() {
-        autoSaveJob?.cancel()
-        autoSaveJob = viewModelScope.launch {
+        viewModelScope.launch {
             while (true) {
                 delay(10000L)
                 saveGame()
@@ -250,24 +330,33 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveGame() {
         val editor = prefs.edit()
-        editor.putString("boxes_mantissa", currencyManager.boxes.mantissa.toString())
-        editor.putInt("boxes_exponent", currencyManager.boxes.exponent)
-        editor.putString("gems_mantissa", currencyManager.gems.mantissa.toString())
-        editor.putInt("gems_exponent", currencyManager.gems.exponent)
-        editor.putString("prestige_mantissa", currencyManager.prestige.mantissa.toString())
-        editor.putInt("prestige_exponent", currencyManager.prestige.exponent)
 
-        editor.putInt("manual_merges", manualMerges)
-        editor.putInt("auto_merges", autoMerges)
+        // Currencies
+        for (c in Currencies.ALL) {
+            val b = currencyManager.getBalance(c.id)
+            editor.putString("currency_${c.id}_m", b.mantissa.toString())
+            editor.putInt("currency_${c.id}_e", b.exponent)
+        }
+
+        // Stats
+        for ((key, value) in stats.all()) {
+            editor.putLong("stat_$key", value)
+        }
         editor.putLong("playtime_seconds", playtimeSeconds)
-        editor.putInt("total_prestiges", totalPrestiges)
         editor.putBoolean("auto_merger_enabled", autoMergerEnabled)
-        editor.putLong("last_save_time", System.currentTimeMillis())
 
+        // Upgrades
         for ((id, level) in upgradeManager.getAllLevels()) {
             editor.putInt("upgrade_level_$id", level)
         }
 
+        // Flags
+        editor.putStringSet("flags", flags)
+
+        // Achievements
+        editor.putStringSet("achievements", achievementManager.getAllUnlockedIds())
+
+        // Grid
         for (i in 0 until 20) {
             val item = _gridItems[i]
             if (item != null) {
@@ -282,39 +371,51 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadGame() {
-        val boxesMantissa = prefs.getString("boxes_mantissa", "0.0")!!.toDouble()
-        val boxesExponent = prefs.getInt("boxes_exponent", 0)
-        val gemsMantissa = prefs.getString("gems_mantissa", "0.0")!!.toDouble()
-        val gemsExponent = prefs.getInt("gems_exponent", 0)
-        val presMantissa = prefs.getString("prestige_mantissa", "0.0")!!.toDouble()
-        val presExponent = prefs.getInt("prestige_exponent", 0)
+        // Currencies
+        for (c in Currencies.ALL) {
+            val m = prefs.getString("currency_${c.id}_m", "0.0")!!.toDouble()
+            val e = prefs.getInt("currency_${c.id}_e", 0)
+            currencyManager.setBalance(c.id, BigNumber.of(m, e))
+        }
 
-        currencyManager.restore(
-            BigNumber(boxesMantissa, boxesExponent),
-            BigNumber(gemsMantissa, gemsExponent),
-            BigNumber(presMantissa, presExponent)
-        )
+        // Stats — snapshot the map first
+        val allPrefs: Map<String, *> = prefs.getAll()
+        val statsMap = mutableMapOf<String, Long>()
+        for (key in allPrefs.keys) {
+            if (key.startsWith("stat_")) {
+                statsMap[key.removePrefix("stat_")] = prefs.getLong(key, 0L)
+            }
+        }
+        stats.restore(statsMap)
 
-        manualMerges = prefs.getInt("manual_merges", 0)
-        autoMerges = prefs.getInt("auto_merges", 0)
         playtimeSeconds = prefs.getLong("playtime_seconds", 0L)
-        totalPrestiges = prefs.getInt("total_prestiges", 0)
+        stats.set("playtime_seconds", playtimeSeconds)
         autoMergerEnabled = prefs.getBoolean("auto_merger_enabled", false)
 
+        // Upgrades — same fix
         val levels = mutableMapOf<String, Int>()
-        val allUpgradeIds = listOf(
-            "spawn_tier", "spawn_rate",
-            "gem_more_boxes", "gem_more_prestige", "gem_increase_chance", "gem_auto_speed",
-            "pres_more_boxes", "pres_more_gems", "pres_more_prestige"
-        )
-        for (id in allUpgradeIds) {
-            val lvl = prefs.getInt("upgrade_level_$id", 1)
-            if (lvl > 1) {
-                levels[id] = lvl
+        for (key in allPrefs.keys) {
+            if (key.startsWith("upgrade_level_")) {
+                val id = key.removePrefix("upgrade_level_")
+                val lvl = prefs.getInt(key, 1)
+                if (lvl > 1) levels[id] = lvl
             }
         }
         upgradeManager.restore(levels)
 
+        // Flags
+        val savedFlags = prefs.getStringSet("flags", emptySet()) ?: emptySet()
+        _flags.clear()
+        _flags.addAll(savedFlags)
+
+        // Achievements
+        val unlocked = prefs.getStringSet("achievements", emptySet()) ?: emptySet()
+        achievementManager.restore(unlocked)
+
+        // Reapply side effects of already-unlocked achievements (sets flags, etc.)
+        achievementManager.replayUnlocks(this)
+
+        // Grid
         var maxId = 0L
         for (i in 0 until 20) {
             val id = prefs.getLong("grid_${i}_id", -1L)
@@ -328,7 +429,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
         nextItemId = maxId + 1
 
-        if (_gridItems.all { it == null }) {
+        val anyItemPresent = (0 until 20).any { _gridItems[it] != null }
+        if (!anyItemPresent) {
             _gridItems[7] = GridItem(nextItemId++, upgradeManager.spawnTierLevel)
             _gridItems[12] = GridItem(nextItemId++, upgradeManager.spawnTierLevel)
         }
@@ -338,10 +440,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().clear().apply()
         currencyManager.resetAll()
         upgradeManager.reset()
-        manualMerges = 0
-        autoMerges = 0
+        achievementManager.reset()
+        stats.reset()
+        _flags.clear()
         playtimeSeconds = 0L
-        totalPrestiges = 0
         autoMergerEnabled = false
         for (i in _gridItems.indices) {
             _gridItems[i] = null

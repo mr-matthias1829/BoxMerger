@@ -3,14 +3,15 @@ package com.boxmerger.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.boxmerger.GameViewModel
-import com.boxmerger.model.*
+import com.boxmerger.logic.GemUpgradesLogic
 
 @Composable
 fun GemUpgradesScreen(viewModel: GameViewModel) {
@@ -30,22 +31,9 @@ fun GemUpgradesScreen(viewModel: GameViewModel) {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        val upgrades = mutableListOf(gemMoreBoxesUpgrade, gemMorePrestigeUpgrade, gemIncreaseChanceUpgrade)
-        if (viewModel.autoMergerUnlocked) {
-            upgrades.add(gemAutoSpeedUpgrade)
-        }
-
-        for (definition in upgrades) {
-            val level = viewModel.upgradeManager.getLevel(definition.id)
-            UpgradeRecordItem(
-                definition = definition,
-                currentLevel = level,
-                effectText = definition.effectDescription(level),
-                cost = viewModel.upgradeManager.getCurrentCost(definition),
-                currencyManager = viewModel.currencyManager,
-                onBuy = { viewModel.buyUpgrade(definition) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+        UpgradeList(
+            viewModel = viewModel,
+            pageId = GemUpgradesLogic.PAGE_ID
+        )
     }
 }

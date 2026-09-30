@@ -7,14 +7,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boxmerger.GameViewModel
-import com.boxmerger.model.*
+import com.boxmerger.logic.PrestigeLogic
 
 @Composable
 fun PrestigeScreen(viewModel: GameViewModel) {
@@ -43,24 +43,6 @@ fun PrestigeScreen(viewModel: GameViewModel) {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        /*
-        if (!canPrestige) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "🔒 First Prestige Locked: You need at least one Tier 20+ on your grid to unlock your first prestige!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-         */
-
         // Big Prestige Gain Button
         Button(
             onClick = { viewModel.performPrestige() },
@@ -69,12 +51,21 @@ fun PrestigeScreen(viewModel: GameViewModel) {
                 .fillMaxWidth()
                 .height(70.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
-            Icon(imageVector = Icons.Default.Bolt, contentDescription = "Prestige", modifier = Modifier.size(32.dp))
+            Icon(
+                imageVector = Icons.Default.Bolt,
+                contentDescription = "Prestige",
+                modifier = Modifier.size(32.dp)
+            )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = if (canPrestige) "Prestige (+${gain.toEngineeringString()})" else "Locked (Requires Tier 20+)",
+                text = if (canPrestige)
+                    "Prestige (+${gain.toEngineeringString()})"
+                else
+                    "Locked (Requires Tier 20+)",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -89,18 +80,10 @@ fun PrestigeScreen(viewModel: GameViewModel) {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        val presUpgrades = listOf(presMoreBoxesUpgrade, presMoreGemsUpgrade, presMorePrestigeUpgrade)
-        for (definition in presUpgrades) {
-            val level = viewModel.upgradeManager.getLevel(definition.id)
-            UpgradeRecordItem(
-                definition = definition,
-                currentLevel = level,
-                effectText = definition.effectDescription(level),
-                cost = viewModel.upgradeManager.getCurrentCost(definition),
-                currencyManager = viewModel.currencyManager,
-                onBuy = { viewModel.buyUpgrade(definition) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+        // Just this — no manual list, no manual loop
+        UpgradeList(
+            viewModel = viewModel,
+            pageId = PrestigeLogic.PAGE_ID
+        )
     }
 }
