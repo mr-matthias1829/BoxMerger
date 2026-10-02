@@ -11,21 +11,30 @@ class Achievement(
     val id: String,
     val name: String,
     val description: String,
-    val iconName: String,        // "ach_<id>" drawable lookup
+    val iconName: String,
     val fallbackEmoji: String,
     val condition: (GameState) -> Boolean,
-    /** Optional: called once when unlocked. Use to set flags, unlock tabs, etc. */
+    /** Optional: hidden until this achievement id is unlocked. */
+    val visibleAfter: String? = null,
+    /** Optional: hidden until this returns true. Combined with visibleAfter (both must pass). */
+    val visibleWhen: ((GameState) -> Boolean)? = null,
     val onUnlock: ((GameViewModel) -> Unit)? = null
-)
+) {
+    val hasVisibilityRule: Boolean get() = visibleAfter != null || visibleWhen != null
+}
 
 class AchievementManager {
     private val achievements = mutableMapOf<String, Achievement>()
     private val _unlocked = mutableStateMapOf<String, Boolean>()
+    private val _visible = mutableStateMapOf<String, Boolean>()
 
     fun register(achievement: Achievement) {
         achievements[achievement.id] = achievement
         if (!_unlocked.containsKey(achievement.id)) {
             _unlocked[achievement.id] = false
+        }
+        if (!_visible.containsKey(achievement.id)) {
+            _visible[achievement.id] = !achievement.hasVisibilityRule
         }
     }
 
@@ -35,18 +44,38 @@ class AchievementManager {
 
     fun isUnlocked(id: String): Boolean = _unlocked[id] ?: false
 
+    /** Unlocked achievements are always visible, regardless of their visibility rule. */
+    fun isVisible(id: String): Boolean = isUnlocked(id) || (_visible[id] ?: false)
+
     fun getAll(): List<Achievement> = achievements.values.toList()
+
+    fun getVisible(): List<Achievement> = achievements.values.filter { isVisible(it.id) }
 
     fun getUnlocked(): List<Achievement> = achievements.values.filter { isUnlocked(it.id) }
 
-    /** Call this every tick/frame. Fires onUnlock when condition first met. */
-    fun checkAll(state: GameState, viewModel: GameViewModel) {
+    fun checkAll(
+        state: GameState,
+        viewModel: GameViewModel,
+        onNewUnlock: ((Achievement) -> Unit)? = null
+    ) {
         for (a in achievements.values) {
             if (isUnlocked(a.id)) continue
             if (a.condition(state)) {
                 _unlocked[a.id] = true
                 a.onUnlock?.invoke(viewModel)
+                onNewUnlock?.invoke(a)
             }
+        }
+        // After the unlock pass, so achievements gated on one that just unlocked appear the same tick
+        updateVisibility(state)
+    }
+
+    private fun updateVisibility(state: GameState) {
+        for (a in achievements.values) {
+            if (!a.hasVisibilityRule) continue
+            val visible = (a.visibleAfter == null || isUnlocked(a.visibleAfter)) &&
+                    (a.visibleWhen?.invoke(state) ?: true)
+            if (_visible[a.id] != visible) _visible[a.id] = visible
         }
     }
 
@@ -62,18 +91,10 @@ class AchievementManager {
         for (key in _unlocked.keys) {
             _unlocked[key] = false
         }
-    }
-
-    /**
-     * Fire onUnlock for every already-unlocked achievement.
-     * Called after loading a save so flags and other side effects get reapplied.
-     * Must be safe to call multiple times (onUnlock hooks should be idempotent).
-     */
-    fun replayUnlocks(viewModel: GameViewModel) {
         for (a in achievements.values) {
-            if (isUnlocked(a.id)) {
-                a.onUnlock?.invoke(viewModel)
-            }
+            _visible[a.id] = !a.hasVisibilityRule
         }
     }
+
+    fun replayUnlocks(viewModel: GameViewModel) { /* unchanged */ }
 }

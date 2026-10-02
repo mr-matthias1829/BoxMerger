@@ -85,13 +85,14 @@ fun GridView(
 
     Box(
         modifier = Modifier
-            .size(width = 340.dp, height = 272.dp)
+            .size(width = 340.dp, height = 274.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
             .padding(8.dp)
     ) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
             modifier = Modifier.fillMaxSize(),
+            userScrollEnabled = false,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {

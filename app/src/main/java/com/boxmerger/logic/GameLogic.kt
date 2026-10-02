@@ -3,8 +3,6 @@ package com.boxmerger.logic
 
 import com.boxmerger.model.*
 import java.util.Locale
-
-// logic/GameLogic.kt — top of file, outside the object
 import kotlin.math.pow
 
 fun getSpawnRate(level: Int): Double {
@@ -53,9 +51,9 @@ object GameLogic {
         effectDescription = { level ->
             val seconds = getSpawnRate(level)
             if (seconds >= 1.0) {
-                String.format(Locale.US, "Spawn Rate: %.2fs", seconds)
+                "Spawn Rate: ${formatSeconds(seconds)}s"
             } else {
-                String.format(Locale.US, "Spawn Rate: %.0fms", seconds * 1000.0)
+                "Spawn Rate: ${(seconds * 1000).toInt()}ms"
             }
         },
         onPurchase = { vm -> vm.restartSpawner() }

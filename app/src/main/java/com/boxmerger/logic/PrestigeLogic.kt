@@ -15,15 +15,24 @@ object PrestigeLogic {
         baseCost = mapOf(Currencies.PRESTIGE.id to BigNumber.of(400.0)),
         scalingFunction = { level ->
             when {
-                level <= 5 -> 14.5
-                level <= 12 -> 19.0
-                else -> 27.0
+                level <= 5 -> 10.0
+                level <= 10 -> 17.5
+                else -> 33.3
             }
         },
         maxLevel = 500,
-        effectFormula = { level -> 1.0 + (5.0.pow(level - 1) - 1) },
+        effectFormula = { level ->
+            when {
+                level <= 10 -> 1.0 + (5.0.pow(level - 1) - 1)
+                else -> 1953125.0 * (7.5.pow(level - 10))
+            }
+        },
         effectDescription = { level ->
-            "Multiplier: x${1.0 + (5.0.pow(level - 1) - 1)}"
+            val mult = when {
+                level <= 10 -> 1.0 + (5.0.pow(level - 1) - 1)
+                else -> 1953125.0 * (8.0.pow(level - 10))
+            }
+            "Multiplier: x${formatMultiplier(mult)}"
         }
     )
 
@@ -36,7 +45,7 @@ object PrestigeLogic {
         maxLevel = 500,
         effectFormula = { level -> 1.0 + (1.1.pow(level - 1) - 1) },
         effectDescription = { level ->
-            "Gem Multiplier: x${String.format(Locale.US, "%.2f", 1.0 + (1.1.pow(level - 1) - 1))}"
+            "Gem Multiplier: x${formatMultiplier(1.0 + (1.1.pow(level - 1) - 1))}"
         }
     )
 
@@ -49,7 +58,7 @@ object PrestigeLogic {
         maxLevel = 500,
         effectFormula = { level -> 1.0 + (1.16.pow(level - 1) - 1) },
         effectDescription = { level ->
-            "Multiplier: x${String.format(Locale.US, "%.2f", 1.0 + (1.16.pow(level - 1) - 1))}"
+            "Multiplier: x${formatMultiplier(1.0 + (1.16.pow(level - 1) - 1))}"
         }
     )
 

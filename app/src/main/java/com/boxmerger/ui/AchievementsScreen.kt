@@ -32,7 +32,8 @@ fun AchievementsScreen(viewModel: GameViewModel) {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(all) { achievement ->
+            val visible = viewModel.achievementManager.getVisible()
+            items(visible) { achievement ->
                 AchievementItem(
                     achievement = achievement,
                     isUnlocked = viewModel.achievementManager.isUnlocked(achievement.id)

@@ -3,14 +3,16 @@ package com.boxmerger.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.boxmerger.GameViewModel
 import com.boxmerger.model.Currency
 import com.boxmerger.model.Currencies
@@ -25,41 +27,63 @@ object TabConfig {
             id = "game",
             label = "Game",
             icon = Icons.Default.Home,
+            iconName = "currencies/icon_boxes.png",
             pageId = "game",
+            row = 0,
+            topBarCurrencies = listOf(Currencies.BOXES, Currencies.GEM)
+        ),
+        PageTab(
+            id = "gem_upgrades",
+            label = "Gem Upgrades",
+            icon = Icons.Default.Diamond,
+            iconName = "currencies/icon_gem.png",
+            pageId = "gem_upgrades",
+            row = 0,
+            topBarCurrencies = listOf(Currencies.BOXES, Currencies.GEM)
+        ),
+        PageTab(
+            id = "leveling",
+            label = "Leveling",
+            icon = Icons.AutoMirrored.Filled.TrendingUp,
+            iconName = "icons/icon_level.png",
+            pageId = "leveling",
+            row = 0,
+            isVisible = { state -> state.hasFlag("leveling_unlocked") },
             topBarCurrencies = listOf(Currencies.BOXES, Currencies.GEM)
         ),
         PageTab(
             id = "prestige",
             label = "Prestige",
             icon = Icons.Default.Bolt,
+            iconName = "currencies/icon_prestige.png",
             pageId = "prestige",
+            row = 0,
             isVisible = { state -> state.hasFlag("prestige_unlocked") || state.stat("total_prestiges") > 0 },
             topBarCurrencies = listOf(Currencies.PRESTIGE)
-        ),
-        PageTab(
-            id = "gem_upgrades",
-            label = "Gem Upgrades",
-            icon = Icons.Default.Diamond,
-            pageId = "gem_upgrades",
-            topBarCurrencies = listOf(Currencies.BOXES, Currencies.GEM )
         ),
         PageTab(
             id = "achievements",
             label = "Achievements",
             icon = Icons.Default.EmojiEvents,
-            pageId = "achievements"
+            iconName = "tab_achievements",
+            pageId = "achievements",
+            row = 1
         ),
         PageTab(
             id = "stats",
             label = "Stats",
             icon = Icons.Default.BarChart,
-            pageId = "stats"
+            iconName = "tab_stats",
+            pageId = "stats",
+            row = 1
         ),
         PageTab(
             id = "settings",
             label = "Settings",
             icon = Icons.Default.Settings,
-            pageId = "settings"
+            iconName = "tab_settings",
+            pageId = "settings",
+            row = 1
         )
     )
 
@@ -80,49 +104,61 @@ fun MainLayout(viewModel: GameViewModel, modifier: Modifier = Modifier) {
     val safeIndex = selectedTabIndex.coerceIn(0, maxOf(0, visibleTabs.size - 1))
     val currentTab = visibleTabs.getOrNull(safeIndex)
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Dynamic top bar
-        val topBarCurrencies = currentTab?.topBarCurrencies
-            ?.takeIf { it.isNotEmpty() }
-            ?: TabConfig.DEFAULT_TOP_BAR_CURRENCIES
-
-        TopCurrencyBar(
-            viewModel = viewModel,
-            currencies = topBarCurrencies
-        )
-
-        // Main content
-        Box(
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            when (currentTab?.pageId) {
-                "game" -> GameScreen(viewModel = viewModel)
-                "prestige" -> PrestigeScreen(viewModel = viewModel)
-                "gem_upgrades" -> GemUpgradesScreen(viewModel = viewModel)
-                "achievements" -> AchievementsScreen(viewModel = viewModel)
-                "stats" -> StatsScreen(viewModel = viewModel)
-                "settings" -> SettingsScreen(viewModel = viewModel)
-                else -> PlaceholderScreen(title = "Unknown Page")
+            // Dynamic top bar
+            val topBarCurrencies = currentTab?.topBarCurrencies
+                ?.takeIf { it.isNotEmpty() }
+                ?: TabConfig.DEFAULT_TOP_BAR_CURRENCIES
+
+            TopCurrencyBar(
+                viewModel = viewModel,
+                currencies = topBarCurrencies
+            )
+
+            // Main content
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                when (currentTab?.pageId) {
+                    "game" -> GameScreen(viewModel = viewModel)
+                    "prestige" -> PrestigeScreen(viewModel = viewModel)
+                    "gem_upgrades" -> GemUpgradesScreen(viewModel = viewModel)
+                    "leveling" -> LevelingScreen(viewModel = viewModel)
+                    "achievements" -> AchievementsScreen(viewModel = viewModel)
+                    "stats" -> StatsScreen(viewModel = viewModel)
+                    "settings" -> SettingsScreen(viewModel = viewModel)
+                    else -> PlaceholderScreen(title = "Unknown Page")
+                }
+            }
+
+            // Bottom nav
+            Surface(
+                tonalElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                BottomNav(
+                    tabs = visibleTabs,
+                    selectedIndex = safeIndex,
+                    onSelect = { selectedTabIndex = it }
+                )
             }
         }
 
-        // Bottom nav
-        Surface(
-            tonalElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            BottomNav(
-                tabs = visibleTabs,
-                selectedIndex = safeIndex,
-                onSelect = { selectedTabIndex = it }
-            )
-        }
+        // Unified popup overlay — shows achievements, level ups, and anything
+        // else you add to viewModel.popupQueue
+        PopupOverlay(
+            queue = viewModel.popupQueue,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .zIndex(10f)
+        )
     }
 }
 
@@ -151,7 +187,7 @@ fun TopCurrencyBar(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = viewModel.currencyManager.getBalance(currency.id)
-                            .toEngineeringString(),
+                            .toPrettyString(),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -166,27 +202,29 @@ fun BottomNav(
     selectedIndex: Int,
     onSelect: (Int) -> Unit
 ) {
-    // Split into rows of 3
-    val rows = tabs.chunked(3)
+    // Group visible tabs by explicit row index, sorted by row
+    val rows = tabs.groupBy { it.row }.entries.sortedBy { it.key }.map { it.value }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        for (row in rows) {
+        for (rowTabs in rows) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                for ((i, tab) in row.withIndex()) {
+                for (tab in rowTabs) {
                     val actualIndex = tabs.indexOf(tab)
-                    IconButtonWithTooltip(
-                        icon = tab.icon,
-                        label = tab.label,
+                    TabButton(
+                        tab = tab,
                         isSelected = selectedIndex == actualIndex,
-                        onClick = { onSelect(actualIndex) }
+                        onClick = { onSelect(actualIndex) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
                     )
                 }
             }
@@ -195,11 +233,11 @@ fun BottomNav(
 }
 
 @Composable
-fun IconButtonWithTooltip(
-    icon: ImageVector,
-    label: String,
+fun TabButton(
+    tab: PageTab,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Button(
         onClick = onClick,
@@ -209,22 +247,21 @@ fun IconButtonWithTooltip(
             contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary
             else MaterialTheme.colorScheme.onSurfaceVariant
         ),
-        modifier = Modifier
-            .size(width = 110.dp, height = 40.dp)
-            .padding(horizontal = 2.dp),
-        contentPadding = PaddingValues(4.dp)
+        shape = RoundedCornerShape(10.dp),
+        modifier = modifier,
+        contentPadding = PaddingValues(0.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                modifier = Modifier.size(18.dp)
+            IconResolver.TabIcon(
+                tab = tab,
+                isSelected = isSelected,
+                size = 26.dp,
+                tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = label, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

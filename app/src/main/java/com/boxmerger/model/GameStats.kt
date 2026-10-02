@@ -1,34 +1,36 @@
-// model/GameState.kt
+// model/GameStats.kt
 package com.boxmerger.model
 
-/**
- * Snapshot of state relevant for conditions (upgrades, achievements, tabs).
- * Keep this lightweight; it's recreated often.
- */
-class GameState(
-    val currencyManager: CurrencyManager,
-    val upgradeManager: UpgradeManager,
-    val stats: GameStats,
-    val flags: Set<String>
-) {
-    fun hasFlag(flag: String): Boolean = flag in flags
-    fun currency(id: String): BigNumber = currencyManager.getBalance(id)
-    fun upgradeLevel(id: String): Int = upgradeManager.getLevel(id)
-    fun stat(key: String): Long = stats.get(key)
-}
-
 class GameStats {
-    private val values = mutableMapOf<String, Long>()
+    private val longs = mutableMapOf<String, Long>()
+    private val doubles = mutableMapOf<String, Double>()
 
-    fun get(key: String): Long = values[key] ?: 0L
-    fun set(key: String, value: Long) { values[key] = value }
+    fun get(key: String): Long = longs[key] ?: 0L
+    fun getDouble(key: String): Double = doubles[key] ?: 0.0
+
+    fun set(key: String, value: Long) { longs[key] = value }
+    fun setDouble(key: String, value: Double) { doubles[key] = value }
+
     fun increment(key: String, amount: Long = 1L) {
-        values[key] = get(key) + amount
+        longs[key] = get(key) + amount
     }
-    fun all(): Map<String, Long> = values.toMap()
-    fun restore(map: Map<String, Long>) {
-        values.clear()
-        values.putAll(map)
+
+    fun addDouble(key: String, amount: Double) {
+        doubles[key] = getDouble(key) + amount
     }
-    fun reset() { values.clear() }
+
+    fun all(): Map<String, Long> = longs.toMap()
+    fun allDoubles(): Map<String, Double> = doubles.toMap()
+
+    fun restore(longMap: Map<String, Long>, doubleMap: Map<String, Double> = emptyMap()) {
+        longs.clear()
+        longs.putAll(longMap)
+        doubles.clear()
+        doubles.putAll(doubleMap)
+    }
+
+    fun reset() {
+        longs.clear()
+        doubles.clear()
+    }
 }

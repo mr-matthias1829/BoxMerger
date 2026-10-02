@@ -172,6 +172,105 @@ data class BigNumber(val mantissa: Double, val exponent: Int) : Comparable<BigNu
         return mantissa * 10.0.pow(exponent.toDouble())
     }
 
+    /**
+     * Formats the number with a suffix (K, M, B, T, Qa, Qi, ...) for readability.
+     * Falls back to scientific notation for extremely large values.
+     * Decimals under 0.0001 use scientific notation; otherwise plain decimal.
+     */
+    fun toPrettyString(): String {
+        val n = normalized()
+        if (n.isZero()) return "0"
+
+        val absVal = abs(n.toDouble())
+
+        // Small decimals: show plain decimal unless extremely small
+        if (absVal < 1.0) {
+            if (absVal < 0.0001) {
+                // tiny -> scientific
+                return n.toEngineeringString()
+            }
+            return formatSmallDecimal(n)
+        }
+
+        // 1.0 to 999.999 -> just show the number
+        if (absVal < 1000.0) {
+            return formatWithCommas(n.toDouble())
+        }
+
+        // Use suffix notation
+        return toSuffixedString()
+    }
+
+    private fun formatSmallDecimal(n: BigNumber): String {
+        // For values < 1, we want e.g. "0.02", "0.5", "0.123"
+        val d = n.toDouble()
+        return when {
+            d == floor(d) -> String.format(Locale.US, "%.0f", d)
+            abs(d) >= 0.01 -> String.format(Locale.US, "%.3f", d).trimEnd('0').trimEnd('.')
+            else -> String.format(Locale.US, "%.4f", d).trimEnd('0').trimEnd('.')
+        }
+    }
+
+    private fun formatWithCommas(value: Double): String {
+        return when {
+            value == floor(value) -> String.format(Locale.US, "%,.0f", value)
+            else -> {
+                // Show 2 decimals, trim trailing zeros
+                val s = String.format(Locale.US, "%,.2f", value)
+                if (s.endsWith(".00")) s.dropLast(3)
+                else s
+            }
+        }
+    }
+
+    /**
+     * Suffix notation: 1.23K, 4.56M, 7.89B, 1.23T, 4.56Qa, ...
+     * Uses engineering exponent to pick suffix.
+     */
+    private fun toSuffixedString(): String {
+        val n = normalized()
+        if (n.isZero()) return "0"
+
+        // Determine which suffix group we're in based on exponent.
+        // exponent is always a multiple of 3 (engineering notation).
+        // Group index = exponent / 3.
+        // 0 -> "", 1 -> K, 2 -> M, 3 -> B, 4 -> T, 5 -> Qa, ...
+
+        val suffixes = arrayOf(
+            "", "K", "M", "B", "T", // the very known ones
+            "Qa", "Qi", "Sx", "Sp", "Oc", "No",
+            "Dc",
+
+
+            //"Ud", "Dd", "Td",
+            /*
+            "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod",
+            "Vg", "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg",
+            "Tg", "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg"
+             */
+        )
+
+        val groupIndex = n.exponent / 3
+        if (groupIndex < 0 || groupIndex >= suffixes.size) {
+            // too large for suffixes -> use scientific
+            return toEngineeringString()
+        }
+
+        val suffix = suffixes[groupIndex]
+        val m = n.mantissa
+
+        // Format mantissa: 1-3 digits before decimal, 2 after, trim zeros
+        val formatted = when {
+            m == floor(m) -> String.format(Locale.US, "%.0f", m)
+            else -> {
+                val s = String.format(Locale.US, "%.2f", m)
+                if (s.endsWith("0")) s.dropLast(1) else s
+            }
+        }
+
+        return "$formatted$suffix"
+    }
+
     /** Engineering string: 1.23e6, 1.23e9, etc. */
     fun toEngineeringString(): String {
         val n = normalized()
@@ -186,14 +285,8 @@ data class BigNumber(val mantissa: Double, val exponent: Int) : Comparable<BigNu
         return String.format(Locale.US, "%.2fe%d", n.mantissa, n.exponent)
     }
 
-    /** Pretty string with suffixes for small numbers, e-notation for big */
-    fun toPrettyString(): String {
-        val n = normalized()
-        if (n.isZero()) return "0"
-        if (n.exponent < 6) {
-            val value = n.toDouble()
-            return String.format(Locale.US, "%,.2f", value)
-        }
-        return n.toEngineeringString()
-    }
+    /** Pretty string alias (kept for compatibility) */
+    fun toDisplayString(): String = toPrettyString()
+
+    override fun toString(): String = toPrettyString()
 }

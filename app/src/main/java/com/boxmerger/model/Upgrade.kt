@@ -16,6 +16,9 @@ typealias Condition = (GameState) -> Boolean
  * - isVisible: if false, upgrade is hidden entirely.
  * - isUnlocked: if false, upgrade shows as locked (greyed out, no buy).
  * - onUnlock: called once when isUnlocked transitions false -> true.
+ *
+ * Effect formulas return Double for simple multipliers; for values that can
+ * grow beyond Double range, use BigNumber-based formulas.
  */
 class UpgradeDefinition(
     val id: String,
@@ -124,9 +127,6 @@ class UpgradeManager {
     }
 
     fun getAllLevels(): Map<String, Int> = _levels.toMap()
-
-
-    // Inside class UpgradeManager, near the bottom
 
     val spawnTierLevel: Int
         get() = getLevel("spawn_tier")

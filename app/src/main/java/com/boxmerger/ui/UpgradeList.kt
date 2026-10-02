@@ -118,7 +118,7 @@ fun UpgradeRecordItem(
                                     )
                                     Spacer(modifier = Modifier.width(2.dp))
                                     Text(
-                                        text = amount.toEngineeringString(),
+                                        text = amount.toPrettyString(),
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface

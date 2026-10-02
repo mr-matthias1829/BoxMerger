@@ -13,7 +13,10 @@ class PageTab(
     val id: String,
     val label: String,
     val icon: ImageVector,
+    val iconName: String? = null,
+    val tintPng: Boolean = false,
     val pageId: String,
+    val row: Int = 0,
     val isVisible: Condition = { true },
     /** Currencies to show in top bar on this page. Empty = use default. */
     val topBarCurrencies: List<Currency> = emptyList()

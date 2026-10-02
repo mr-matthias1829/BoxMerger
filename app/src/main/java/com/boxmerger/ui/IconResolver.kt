@@ -4,12 +4,15 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -121,6 +124,70 @@ object IconResolver {
         }
     }
 
+    private fun loadTabBitmap(context: Context, iconName: String?, tabId: String): ImageBitmap? {
+        val candidates = mutableListOf<String>()
+
+        if (!iconName.isNullOrBlank()) {
+            val nameWithPng = if (iconName.endsWith(".png", ignoreCase = true)) iconName else "$iconName.png"
+            candidates.add(nameWithPng)
+            if (!iconName.contains("/")) {
+                candidates.add("tabs/$nameWithPng")
+                candidates.add("currencies/$nameWithPng")
+                candidates.add("achievements/$nameWithPng")
+            }
+        }
+
+        // Fallbacks based on tabId
+        candidates.add("tabs/tab_$tabId.png")
+        candidates.add("tabs/$tabId.png")
+        candidates.add("tab_$tabId.png")
+        candidates.add("$tabId.png")
+
+        for (path in candidates) {
+            val bitmap = loadAssetBitmap(context, path)
+            if (bitmap != null) return bitmap
+        }
+
+        return null
+    }
+
+    @Composable
+    fun TabIcon(
+        tab: PageTab,
+        isSelected: Boolean,
+        size: Dp,
+        tint: Color? = null,
+        modifier: Modifier = Modifier
+    ) {
+        val context = LocalContext.current
+        val iconName = tab.iconName
+        val bitmap = remember(iconName, tab.id) {
+            loadTabBitmap(context, iconName, tab.id)
+        }
+
+        if (bitmap != null) {
+            val colorFilter = if (tab.tintPng && tint != null) {
+                ColorFilter.tint(tint)
+            } else null
+
+            Image(
+                bitmap = bitmap,
+                contentDescription = tab.label,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit,
+                colorFilter = colorFilter,
+                alpha = if (!tab.tintPng && !isSelected) 0.6f else 1f
+            )
+        } else {
+            Icon(
+                imageVector = tab.icon,
+                contentDescription = tab.label,
+                modifier = modifier.size(size),
+                tint = tint ?: MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+
     /**
      * Check whether an asset exists without loading it, for UI decisions like
      * "should this cell have a transparent background because a PNG will cover it?"
@@ -136,5 +203,33 @@ object IconResolver {
         }
         assetExistsCache[path] = result
         return result
+    }
+
+    @Composable
+    fun NamedIcon(
+        name: String,
+        fallbackEmoji: String,
+        size: Dp,
+        modifier: Modifier = Modifier
+    ) {
+        val context = LocalContext.current
+        val bitmap = remember(name) {
+            loadAssetBitmap(context, "icons/$name.png")
+        }
+
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Text(
+                text = fallbackEmoji,
+                fontSize = (size.value * 0.8f).sp,
+                modifier = modifier
+            )
+        }
     }
 }

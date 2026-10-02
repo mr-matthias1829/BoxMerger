@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boxmerger.GameViewModel
 import com.boxmerger.logic.PrestigeLogic
+import com.boxmerger.model.Currencies
 
 @Composable
 fun PrestigeScreen(viewModel: GameViewModel) {
@@ -55,15 +56,14 @@ fun PrestigeScreen(viewModel: GameViewModel) {
                 containerColor = MaterialTheme.colorScheme.primary
             )
         ) {
-            Icon(
-                imageVector = Icons.Default.Bolt,
-                contentDescription = "Prestige",
-                modifier = Modifier.size(32.dp)
+            IconResolver.CurrencyIcon(
+                currency = Currencies.PRESTIGE,
+                size = 32.dp
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = if (canPrestige)
-                    "Prestige (+${gain.toEngineeringString()})"
+                    "Prestige (+${gain.toPrettyString()})"
                 else
                     "Locked (Requires Tier 20+)",
                 style = MaterialTheme.typography.titleLarge,
