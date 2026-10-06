@@ -18,22 +18,56 @@ object AchievementsLogic {
             visibleAfter = "first_merge",
             id = "3000_merges",
             name = "Merger 3000",
-            description = "Have 3000 merges in total",
+            description = "Have 3000 merges in total and unlock speciality upgrades",
             iconName = "ach_stack",
             fallbackEmoji = "🔀",
             condition = { state ->
                 state.stat("total_merges") >= 3000
-            }
+            },
+            onUnlock = { vm -> vm.setFlag("speciality_unlocked") }
         ),
         Achievement(
             visibleAfter = "3000_merges",
             id = "10e3_merges",
             name = "Can't stop, won't stop!",
-            description = "Have 10k (1e4) merges in total",
+            description = "Have 10K (1e4) merges in total",
             iconName = "ach_stack",
             fallbackEmoji = "🔀",
             condition = { state ->
                 state.stat("total_merges") >= 10e3
+            }
+        ),
+        Achievement(
+            visibleAfter = "10e3_merges",
+            id = "50e3_merges",
+            name = "Nowhere near done",
+            description = "Have 50K (5e4) merges in total, you'll probably let the auto-merger do all the hard work from here on out",
+            iconName = "ach_stack",
+            fallbackEmoji = "🔀",
+            condition = { state ->
+                state.stat("total_merges") >= 50e3
+            }
+        ),
+        Achievement(
+            visibleAfter = "50e3_merges",
+            id = "250e3_merges",
+            name = "Certainly not stopping now",
+            description = "Have 250K (2.5e5) merges in total",
+            iconName = "ach_stack",
+            fallbackEmoji = "🔀",
+            condition = { state ->
+                state.stat("total_merges") >= 250e3
+            }
+        ),
+        Achievement(
+            visibleAfter = "250e3_merges",
+            id = "1e6_merges",
+            name = "Still not done",
+            description = "Have 1M (1e6) merges in total",
+            iconName = "ach_stack",
+            fallbackEmoji = "🔀",
+            condition = { state ->
+                state.stat("total_merges") >= 1e6
             }
         ),
         Achievement(
@@ -295,13 +329,24 @@ object AchievementsLogic {
         ),
         Achievement(
             visibleAfter = "prestige_1e6",
-            id = "prestige_10e9",
+            id = "prestige_100e9",
             name = "Billionaire",
-            description = "Hold onto over 10B (1e10) prestige",
+            description = "Hold onto over 100B (1e11) prestige",
             iconName = "ach_prestige_1e6",
             fallbackEmoji = "P",
             condition = { state ->
-                state.currency("prestige").compareTo(BigNumber.of(10e9)) >= 0
+                state.currency("prestige").compareTo(BigNumber.of(100e9)) >= 0
+            }
+        ),
+        Achievement(
+            visibleAfter = "prestige_100e9",
+            id = "prestige_10e15",
+            name = "Prestige to last a lifetime",
+            description = "Hold onto over 10Qa (1e16) prestige",
+            iconName = "ach_prestige_1e6",
+            fallbackEmoji = "P",
+            condition = { state ->
+                state.currency("prestige").compareTo(BigNumber.of(10e15)) >= 0
             }
         ),
         Achievement(
@@ -324,6 +369,15 @@ object AchievementsLogic {
             fallbackEmoji = "50",
             condition = { state -> state.stat("player_level") >= 50 },
             onUnlock = { vm -> vm.setFlag("level_reset_unlocked") }
+        ),
+        Achievement(
+            visibleAfter = "3000_merges",
+            id = "buy_buy_max",
+            name = "My fingers no longer hurt!",
+            description = "Unlock the 'Buy Max' button",
+            iconName = "ach_temp",
+            fallbackEmoji = "🤖",
+            condition = { state -> state.upgradeLevel("spec_max_button") >= 1 }
         ),
     )
 }

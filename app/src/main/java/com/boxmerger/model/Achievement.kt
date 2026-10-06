@@ -96,5 +96,11 @@ class AchievementManager {
         }
     }
 
-    fun replayUnlocks(viewModel: GameViewModel) { /* unchanged */ }
+    fun replayUnlocks(viewModel: GameViewModel) {
+        for ((id, isUnl) in _unlocked) {
+            if (isUnl) {
+                achievements[id]?.onUnlock?.invoke(viewModel)
+            }
+        }
+    }
 }

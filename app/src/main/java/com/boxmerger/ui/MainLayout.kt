@@ -62,6 +62,16 @@ object TabConfig {
             topBarCurrencies = listOf(Currencies.PRESTIGE)
         ),
         PageTab(
+            id = "speciality",
+            label = "Speciality",
+            icon = Icons.Default.AutoAwesome,
+            iconName = "tab_speciality",
+            pageId = "speciality",
+            row = 0,
+            isVisible = { state -> state.hasFlag("speciality_unlocked") },
+            topBarCurrencies = listOf(Currencies.BOXES, Currencies.GEM, Currencies.PRESTIGE)
+        ),
+        PageTab(
             id = "achievements",
             label = "Achievements",
             icon = Icons.Default.EmojiEvents,
@@ -131,6 +141,7 @@ fun MainLayout(viewModel: GameViewModel, modifier: Modifier = Modifier) {
                     "prestige" -> PrestigeScreen(viewModel = viewModel)
                     "gem_upgrades" -> GemUpgradesScreen(viewModel = viewModel)
                     "leveling" -> LevelingScreen(viewModel = viewModel)
+                    "speciality" -> SpecialityHubScreen(viewModel = viewModel)
                     "achievements" -> AchievementsScreen(viewModel = viewModel)
                     "stats" -> StatsScreen(viewModel = viewModel)
                     "settings" -> SettingsScreen(viewModel = viewModel)

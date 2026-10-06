@@ -15,9 +15,9 @@ object GemUpgradesLogic {
         baseCost = mapOf(Currencies.GEM.id to BigNumber.of(1.0)),
         scalingFunction = { 1.21 },
         maxLevel = 500,
-        effectFormula = { level -> 1.0 + (1.1.pow(level - 1) - 1) },
+        effectFormula = { level -> 1.1.pow(level.toDouble()) },
         effectDescription = { level ->
-            "Multiplier: x${formatMultiplier(1.0 + (1.1.pow(level - 1) - 1))}"
+            "Multiplier: x${formatMultiplier(1.1.pow(level.toDouble()))}"
         }
     )
 
@@ -28,9 +28,9 @@ object GemUpgradesLogic {
         baseCost = mapOf(Currencies.GEM.id to BigNumber.of(5.0)),
         scalingFunction = { 1.29 },
         maxLevel = 500,
-        effectFormula = { level -> 1.0 + (level - 1) * 0.2 },
+        effectFormula = { level -> 1.0 + level * 0.2 },
         effectDescription = { level ->
-            "Multiplier: x${formatMultiplier(1.0 + (level - 1) * 0.2)}"
+            "Multiplier: x${formatMultiplier(1.0 + level * 0.2)}"
         }
     )
 
@@ -51,9 +51,9 @@ object GemUpgradesLogic {
                 else -> 4.0
             }},
         maxLevel = 40,
-        effectFormula = { level -> minOf(10.0, 2.0 + (level - 1) * 0.2) },
+        effectFormula = { level -> minOf(10.0, 2.0 + level * 0.2) },
         effectDescription = { level ->
-            "Chance: ${formatPercent(minOf(10.0, 2.0 + (level - 1) * 0.2))}%"
+            "Chance: ${formatPercent(minOf(10.0, 2.0 + level * 0.2))}%"
         }
     )
 
@@ -72,10 +72,10 @@ object GemUpgradesLogic {
             }},
         maxLevel = 75,
         effectFormula = { level ->
-            6.0 * ((level + 10) / 10.0).pow(-1.3739)
+            5.5 * ((level + 10) / 10.0).pow(-1.3739)
         },
         effectDescription = { level ->
-            val sec = 6.0 * ((level + 10) / 10.0).pow(-1.3739)
+            val sec = 5.5 * ((level + 10) / 10.0).pow(-1.3739)
             if (sec >= 1.0) {
                 "Auto-Merger Speed: ${formatSeconds(sec)}s"
             } else {

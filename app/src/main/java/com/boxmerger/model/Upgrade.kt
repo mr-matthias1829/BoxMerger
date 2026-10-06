@@ -51,7 +51,7 @@ class UpgradeManager {
     fun registerDefinition(definition: UpgradeDefinition) {
         definitions[definition.id] = definition
         if (!_levels.containsKey(definition.id)) {
-            _levels[definition.id] = 1
+            _levels[definition.id] = 0
         }
     }
 
@@ -65,7 +65,7 @@ class UpgradeManager {
         return definitions.values.filter { it.pageId == pageId }
     }
 
-    fun getLevel(id: String): Int = _levels[id] ?: 1
+    fun getLevel(id: String): Int = _levels[id] ?: 0
 
     fun setLevel(id: String, level: Int) {
         _levels[id] = level
@@ -73,14 +73,14 @@ class UpgradeManager {
 
     fun getCost(definition: UpgradeDefinition, level: Int): Map<String, BigNumber> {
         var multiplierProduct = BigNumber.ONE
-        for (l in 1 until level) {
+        for (l in 0 until level - 1) {
             multiplierProduct = multiplierProduct * definition.scalingFunction(l)
         }
         return definition.baseCost.mapValues { (_, base) -> base * multiplierProduct }
     }
 
     fun getCurrentCost(definition: UpgradeDefinition): Map<String, BigNumber> {
-        return getCost(definition, getLevel(definition.id))
+        return getCost(definition, getLevel(definition.id) + 1)
     }
 
     fun canUpgrade(definition: UpgradeDefinition, currencyManager: CurrencyManager): Boolean {
@@ -129,7 +129,7 @@ class UpgradeManager {
     fun getAllLevels(): Map<String, Int> = _levels.toMap()
 
     val spawnTierLevel: Int
-        get() = getLevel("spawn_tier")
+        get() = 1 + getLevel("spawn_tier")
 
     val spawnRateLevel: Int
         get() = getLevel("spawn_rate")

@@ -15,6 +15,7 @@ import com.boxmerger.logic.GameLogic
 import com.boxmerger.logic.GemUpgradesLogic
 import com.boxmerger.logic.LevelingLogic
 import com.boxmerger.logic.PrestigeLogic
+import com.boxmerger.logic.SpecialityLogic
 import com.boxmerger.model.*
 import com.boxmerger.ui.PopupEvent
 import com.boxmerger.ui.achievementPopup
@@ -49,6 +50,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     var playtimeSeconds by mutableStateOf(0L)
         private set
     var autoMergerEnabled by mutableStateOf(false)
+    var simpleBoxesEnabled by mutableStateOf(false)
 
     // Leveling state
     var playerLevel by mutableStateOf(0)
@@ -93,6 +95,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         upgradeManager.registerAll(GameLogic.ALL)
         upgradeManager.registerAll(GemUpgradesLogic.ALL)
         upgradeManager.registerAll(PrestigeLogic.ALL)
+        upgradeManager.registerAll(SpecialityLogic.ALL)
         achievementManager.registerAll(AchievementsLogic.ALL)
     }
 
@@ -172,6 +175,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (firstEmptyIndex != -1) {
             val tier = upgradeManager.spawnTierLevel
             _gridItems[firstEmptyIndex] = GridItem(nextItemId++, tier)
+
+            // Double box spawn check
+            val doubleLevel = upgradeManager.getLevel(SpecialityLogic.doubleSpawnUpgrade.id)
+            if (doubleLevel > 0) {
+                val chance = SpecialityLogic.doubleSpawnUpgrade.effectFormula(doubleLevel)
+                if (Random.nextDouble() * 100.0 < chance) {
+                    val secondEmptyIndex = _gridItems.indexOfFirst { it == null }
+                    if (secondEmptyIndex != -1) {
+                        _gridItems[secondEmptyIndex] = GridItem(nextItemId++, tier)
+                    }
+                }
+            }
         }
     }
 
@@ -308,6 +323,25 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Upgrades ---
 
+    val maxButtonUnlocked: Boolean
+        get() = upgradeManager.getLevel(SpecialityLogic.maxButtonUpgrade.id) >= 1
+
+    fun buyMaxMainUpgrades() {
+        if (!maxButtonUnlocked) return
+        var boughtAny: Boolean
+        do {
+            boughtAny = false
+            if (upgradeManager.canUpgrade(GameLogic.spawnTierUpgrade, currencyManager)) {
+                buyUpgrade(GameLogic.spawnTierUpgrade)
+                boughtAny = true
+            }
+            if (upgradeManager.canUpgrade(GameLogic.spawnRateUpgrade, currencyManager)) {
+                buyUpgrade(GameLogic.spawnRateUpgrade)
+                boughtAny = true
+            }
+        } while (boughtAny)
+    }
+
     fun buyUpgrade(definition: UpgradeDefinition) {
         val success = upgradeManager.purchaseUpgrade(definition, currencyManager)
         if (success) {
@@ -342,8 +376,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             currencyManager.add(Currencies.PRESTIGE, gain)
             totalPrestiges = totalPrestiges + 1
             currencyManager.resetForPrestige()
-            upgradeManager.setLevel(GameLogic.spawnTierUpgrade.id, 1)
-            upgradeManager.setLevel(GameLogic.spawnRateUpgrade.id, 1)
+            upgradeManager.setLevel(GameLogic.spawnTierUpgrade.id, 0)
+            upgradeManager.setLevel(GameLogic.spawnRateUpgrade.id, 0)
             for (i in _gridItems.indices) {
                 _gridItems[i] = null
             }
@@ -379,6 +413,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
         editor.putLong("playtime_seconds", playtimeSeconds)
         editor.putBoolean("auto_merger_enabled", autoMergerEnabled)
+        editor.putBoolean("simple_boxes_enabled", simpleBoxesEnabled)
 
         editor.putInt("player_level", playerLevel)
         editor.putLong("leveling_merges", levelingMerges)
@@ -424,6 +459,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         playtimeSeconds = prefs.getLong("playtime_seconds", 0L)
         stats.set("playtime_seconds", playtimeSeconds)
         autoMergerEnabled = prefs.getBoolean("auto_merger_enabled", false)
+        simpleBoxesEnabled = prefs.getBoolean("simple_boxes_enabled", false)
 
         playerLevel = prefs.getInt("player_level", 0)
         levelingMerges = prefs.getLong("leveling_merges", 0L)
@@ -435,8 +471,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         for (key in allPrefs.keys) {
             if (key.startsWith("upgrade_level_")) {
                 val id = key.removePrefix("upgrade_level_")
-                val lvl = prefs.getInt(key, 1)
-                if (lvl > 1) levels[id] = lvl
+                val lvl = prefs.getInt(key, 0)
+                levels[id] = lvl
             }
         }
         upgradeManager.restore(levels)
@@ -479,6 +515,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _flags.clear()
         playtimeSeconds = 0L
         autoMergerEnabled = false
+        simpleBoxesEnabled = false
         playerLevel = 0
         levelingMerges = 0L
         levelResetPrestigeBoost = 0.0

@@ -243,14 +243,18 @@ data class BigNumber(val mantissa: Double, val exponent: Int) : Comparable<BigNu
         // 0 -> "", 1 -> K, 2 -> M, 3 -> B, 4 -> T, 5 -> Qa, ...
 
         val suffixes = arrayOf(
-            "", "K", "M", "B", "T", // 0, 3, 6, 9, 12
+            "", "K", "M", "B", "T", // 0, 3, 6, 9, 12, the main ones
             "Qa", "Qi", "Sx", "Sp", "Oc", "No", // 15, 18, 21, 24, 27, 30
-            "Dc", "Ud", "Dd", "Td", "Qad", "Qid", // 33, 36, 39, 42, 45, 48
+            "Dc", // 33
+
+            /* Scrapped to keep numbers readable.
+            "Ud", "Dd", "Td", "Qad", "Qid", // 36, 39, 42, 45, 48
             "Sxd", "Spd", "Ocd", "Nod", "Vg", // 51, 54, 57, 60, 63
             "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", // 66, 69, 72, 75, 78
             "Sxvg", "Spvg", "Ocvg", "Novg", "Tg", // 81, 84, 87, 90, 93
             "Utg", "Dtg", "Ttg", "Qatg", "Qitg", // 96, 99, 102, 105, 108
             "Sxtg", "Sptg", "Octg", "Notg" // 111, 114, 117, 120
+             */
         )
 
         val groupIndex = n.exponent / 3

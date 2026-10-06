@@ -57,8 +57,15 @@ fun UpgradeRecordItem(
     isUnlocked: Boolean,
     onBuy: () -> Unit
 ) {
-    val canAfford = isUnlocked && currencyManager.hasEnough(cost)
-    val name = "${definition.name} (Lvl $currentLevel)"
+    val isMaxed = currentLevel >= definition.maxLevel
+    val canAfford = isUnlocked && !isMaxed && currencyManager.hasEnough(cost)
+
+    val levelText = if (definition.maxLevel < Int.MAX_VALUE) {
+        "Lvl $currentLevel/${definition.maxLevel}"
+    } else {
+        "Lvl $currentLevel"
+    }
+    val name = "${definition.name} ($levelText)"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -102,7 +109,14 @@ fun UpgradeRecordItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (cost.isNotEmpty()) {
+                    if (isMaxed) {
+                        Text(
+                            text = "| MAX",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else if (cost.isNotEmpty()) {
                         Text(
                             text = "| Cost:",
                             style = MaterialTheme.typography.bodySmall,

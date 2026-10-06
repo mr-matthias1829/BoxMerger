@@ -11,7 +11,7 @@ fun getSpawnRate(level: Int): Double {
     val slowFactor = 0.25   // past 32, each level counts as 0.25 of a level, SORRY NOT SORRY
 
     val effective = if (x <= slowStart) x else slowStart + (x - slowStart) * slowFactor
-    return 6.0 * ((effective + 9.7786) / 10.7786).pow(-1.3739)
+    return 5.0 * ((effective + 9.7786) / 10.7786).pow(-1.3739)
 }
 
 object GameLogic {
@@ -29,11 +29,14 @@ object GameLogic {
                 level <= 10 -> 3.0 // player stays
                 level <= 19 -> 4.0 // player loses
                 level <= 100 -> 5.0
-                else -> 6.5
+                level <= 200 -> 6.0
+                level <= 500 -> 7.0
+                else -> 8.0
             }
         },
-        effectFormula = { level -> level.toDouble() },
-        effectDescription = { level -> "Spawn Tier: $level" },
+        maxLevel = 10000,
+        effectFormula = { level -> (1 + level).toDouble() },
+        effectDescription = { level -> "Spawn Tier: ${1 + level}" },
         onPurchase = { vm ->
             val newTier = vm.upgradeManager.spawnTierLevel
             vm.upgradeGridItemsToTier(newTier)
@@ -52,6 +55,7 @@ object GameLogic {
                 else -> 4.3
             }
         },
+        maxLevel = 10000,
         effectFormula = { level -> getSpawnRate(level) },
         effectDescription = { level ->
             val seconds = getSpawnRate(level)

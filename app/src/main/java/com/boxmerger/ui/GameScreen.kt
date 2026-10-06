@@ -59,14 +59,28 @@ fun GameScreen(viewModel: GameViewModel, modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "Upgrades",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp)
-        )
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Upgrades",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (viewModel.maxButtonUnlocked) {
+                Button(
+                    onClick = { viewModel.buyMaxMainUpgrades() },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = "Buy Max", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
 
         UpgradeList(
             viewModel = viewModel,
@@ -100,8 +114,8 @@ fun GridView(
                 val item = viewModel.gridItems[index]
                 val isSelected = selectedIndex == index
 
-                // Does a PNG exist for this tier?
-                val hasPng = item != null && IconResolver.assetExists(context, "tiers/t${item.tier}.png")
+                // Does a PNG exist for this tier? (Disabled if Simple Boxes is enabled)
+                val hasPng = !viewModel.simpleBoxesEnabled && item != null && IconResolver.assetExists(context, "tiers/t${item.tier}.png")
 
                 // Background: tint only when no PNG is available
                 val bgColor = when {
@@ -128,7 +142,11 @@ fun GridView(
                     contentAlignment = Alignment.Center
                 ) {
                     if (item != null) {
-                        GridItemContent(tier = item.tier, fillsCell = hasPng)
+                        GridItemContent(
+                            tier = item.tier,
+                            fillsCell = hasPng,
+                            simpleBoxesEnabled = viewModel.simpleBoxesEnabled
+                        )
                     }
                 }
             }
@@ -137,8 +155,21 @@ fun GridView(
 }
 
 @Composable
-fun GridItemContent(tier: Int, fillsCell: Boolean) {
-    // Size: bigger when PNG fills the cell, smaller for text fallback
+fun GridItemContent(
+    tier: Int,
+    fillsCell: Boolean,
+    simpleBoxesEnabled: Boolean
+) {
+    if (simpleBoxesEnabled) {
+        Text(
+            text = "T$tier",
+            color = Color.White,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold
+        )
+        return
+    }
+
     val iconSize = if (fillsCell) 52.dp else 36.dp
 
     IconResolver.GridItemIcon(

@@ -92,7 +92,13 @@ object Gains {
      * How many gems reaching [level] gives, after all multipliers.
      */
     fun levelUpGems(level: Int): BigNumber {
-        val base = 0.4 + (level / 1) * 0.06
+        var base = 0.5
+        if (level <= 25) {
+            base += + (level / 1) * 0.04
+        } else {
+            base += 1 // lvl 25 in above formula
+            base += + (level - 25) * 0.005
+        }
 
         return BigNumber.of(base * gemMultiplier())
     }
@@ -125,17 +131,30 @@ object Gains {
      * Prestige currency earned by prestiging at the current box balance.
      * Uses BigNumber because box balance can be huge.
      */
+
+
+
+    // Boxes above this count with reduced strength
+    private val PRESTIGE_SOFTCAP = BigNumber.of(1e80)
+    // 1.0 = no slowdown, lower = harder slowdown past the cap
+    private const val PRESTIGE_SOFTCAP_POWER = 0.5
+
     fun prestigeGain(): BigNumber {
         val boxes = currencyManager.getBalance(Currencies.BOXES)
         val threshold = BigNumber.of(1e6)
 
         if (boxes <= threshold) return BigNumber.ZERO
 
-        // base = sqrt(boxes - 1e6)
-        val base = (boxes - threshold).sqrt()
+        var effective = boxes - threshold
+
+        // Soft cap: past 1e16, only (excess ratio)^0.5 counts
+        if (effective > PRESTIGE_SOFTCAP) {
+            effective = PRESTIGE_SOFTCAP * (effective / PRESTIGE_SOFTCAP).pow(PRESTIGE_SOFTCAP_POWER)
+        }
+
+        val base = effective.sqrt()
         if (base.isZero()) return BigNumber.ZERO
 
-        // inner = base^0.3 - 10
         val inner = base.pow(0.3) - BigNumber.of(10.0)
         if (inner <= BigNumber.ZERO) return BigNumber.ZERO
 
