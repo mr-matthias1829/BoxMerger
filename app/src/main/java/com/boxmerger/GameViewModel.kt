@@ -239,8 +239,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 stats.set("highest_tier", newTier.toLong())
             }
 
-            processLevelingMerge()
-            checkGemDrop()
+            when {
+                state.stat("highest_tier") >= 5 -> {
+                    checkGemDrop()
+                }}
+            when {
+                hasFlag("leveling_unlocked") -> {
+                    processLevelingMerge()
+                }}
+
         } else {
             _gridItems[toIndex] = source
             _gridItems[fromIndex] = target

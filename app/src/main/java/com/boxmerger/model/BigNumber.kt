@@ -46,25 +46,31 @@ data class BigNumber(val mantissa: Double, val exponent: Int) : Comparable<BigNu
 
     fun isZero(): Boolean = mantissa == 0.0
 
-    /** Returns canonical form: mantissa in [1, 1000) or 0. */
+    /** Returns canonical form: mantissa in [1.0, 1000.0) and exponent as a multiple of 3, or ZERO. */
     fun normalized(): BigNumber {
-        if (mantissa == 0.0 || mantissa.isNaN()) return ZERO
+        if (mantissa == 0.0 || mantissa.isNaN() || mantissa.isInfinite()) return ZERO
 
-        var m = mantissa
-        var e = exponent
+        val sign = if (mantissa < 0) -1.0 else 1.0
+        val absM = abs(mantissa)
 
-        // handle NaN/inf
-        if (m.isInfinite()) return ZERO
+        val totalLog = log10(absM) + exponent
+        if (totalLog.isNaN() || totalLog.isInfinite()) return ZERO
 
-        while (abs(m) >= 1000.0) {
-            m /= 1000.0
-            e += 3
+        val exp = floor(totalLog).toInt()
+        val engExp = (exp / 3) * 3
+        var newMantissa = sign * 10.0.pow(totalLog - engExp)
+
+        // Handle floating point rounding bounds
+        if (abs(newMantissa) >= 1000.0) {
+            newMantissa /= 1000.0
+            return BigNumber(newMantissa, engExp + 3)
         }
-        while (abs(m) < 1.0) {
-            m *= 1000.0
-            e -= 3
+        if (abs(newMantissa) < 1.0) {
+            newMantissa *= 1000.0
+            return BigNumber(newMantissa, engExp - 3)
         }
-        return BigNumber(m, e)
+
+        return BigNumber(newMantissa, engExp)
     }
 
     operator fun plus(other: BigNumber): BigNumber {
@@ -237,17 +243,14 @@ data class BigNumber(val mantissa: Double, val exponent: Int) : Comparable<BigNu
         // 0 -> "", 1 -> K, 2 -> M, 3 -> B, 4 -> T, 5 -> Qa, ...
 
         val suffixes = arrayOf(
-            "", "K", "M", "B", "T", // the very known ones
-            "Qa", "Qi", "Sx", "Sp", "Oc", "No",
-            "Dc",
-
-
-            //"Ud", "Dd", "Td",
-            /*
-            "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod",
-            "Vg", "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg",
-            "Tg", "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg"
-             */
+            "", "K", "M", "B", "T", // 0, 3, 6, 9, 12
+            "Qa", "Qi", "Sx", "Sp", "Oc", "No", // 15, 18, 21, 24, 27, 30
+            "Dc", "Ud", "Dd", "Td", "Qad", "Qid", // 33, 36, 39, 42, 45, 48
+            "Sxd", "Spd", "Ocd", "Nod", "Vg", // 51, 54, 57, 60, 63
+            "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", // 66, 69, 72, 75, 78
+            "Sxvg", "Spvg", "Ocvg", "Novg", "Tg", // 81, 84, 87, 90, 93
+            "Utg", "Dtg", "Ttg", "Qatg", "Qitg", // 96, 99, 102, 105, 108
+            "Sxtg", "Sptg", "Octg", "Notg" // 111, 114, 117, 120
         )
 
         val groupIndex = n.exponent / 3

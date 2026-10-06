@@ -72,9 +72,9 @@ class UpgradeManager {
     }
 
     fun getCost(definition: UpgradeDefinition, level: Int): Map<String, BigNumber> {
-        var multiplierProduct = 1.0
+        var multiplierProduct = BigNumber.ONE
         for (l in 1 until level) {
-            multiplierProduct *= definition.scalingFunction(l)
+            multiplierProduct = multiplierProduct * definition.scalingFunction(l)
         }
         return definition.baseCost.mapValues { (_, base) -> base * multiplierProduct }
     }

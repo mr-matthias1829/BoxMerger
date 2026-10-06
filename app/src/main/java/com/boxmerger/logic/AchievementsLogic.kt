@@ -26,6 +26,17 @@ object AchievementsLogic {
             }
         ),
         Achievement(
+            visibleAfter = "3000_merges",
+            id = "10e3_merges",
+            name = "Can't stop, won't stop!",
+            description = "Have 10k (1e4) merges in total",
+            iconName = "ach_stack",
+            fallbackEmoji = "🔀",
+            condition = { state ->
+                state.stat("total_merges") >= 10e3
+            }
+        ),
+        Achievement(
             visibleAfter = "first_merge",
             id = "tier_5",
             name = "Stepping stone",
@@ -67,9 +78,9 @@ object AchievementsLogic {
         Achievement(
             visibleAfter = "tier_50",
             id = "tier_100",
-            name = "Triple digit tier",
+            name = "You're a star!",
             description = "Reach Tier 100",
-            iconName = "ach_temp",
+            iconName = "t100",
             fallbackEmoji = "100",
             condition = { state ->
                 state.stat("highest_tier") >= 100
@@ -78,9 +89,9 @@ object AchievementsLogic {
         Achievement(
             visibleAfter = "tier_100",
             id = "tier_200",
-            name = "A whole lotta tiers",
+            name = "We support you all the way",
             description = "Reach tier 200",
-            iconName = "ach_temp",
+            iconName = "t200",
             fallbackEmoji = "200",
             condition = { state ->
                 state.stat("highest_tier") >= 200
@@ -89,9 +100,9 @@ object AchievementsLogic {
         Achievement(
             visibleAfter = "tier_200",
             id = "tier_300",
-            name = "There's still more to go",
+            name = "The whole spectrum",
             description = "Reach tier 300",
-            iconName = "ach_temp",
+            iconName = "t300",
             fallbackEmoji = "300",
             condition = { state ->
                 state.stat("highest_tier") >= 300
@@ -100,9 +111,9 @@ object AchievementsLogic {
         Achievement(
             visibleAfter = "tier_300",
             id = "tier_400",
-            name = "Are we there yet?",
+            name = "Right on target",
             description = "Reach tier 400",
-            iconName = "ach_temp",
+            iconName = "t400",
             fallbackEmoji = "400",
             condition = { state ->
                 state.stat("highest_tier") >= 400
@@ -111,34 +122,89 @@ object AchievementsLogic {
         Achievement(
             visibleAfter = "tier_400",
             id = "tier_500",
-            name = "That's all folks!",
-            description = "Reach tier 500",
-            iconName = "ach_temp",
+            name = "Pure balance",
+            description = "Reach tier 500, you're halfway there!",
+            iconName = "t500",
             fallbackEmoji = "500",
             condition = { state ->
                 state.stat("highest_tier") >= 500
             }
         ),
         Achievement(
-            visibleAfter = "tier_501", // shows when its unlocked
-            id = "tier_501",
-            name = "But wait, there's more!",
-            description = "Witness the tiers looping and achieve star 1",
-            iconName = "ach_temp",
-            fallbackEmoji = "501",
+            visibleAfter = "tier_500",
+            id = "tier_600",
+            name = "Swirling colors",
+            description = "Reach tier 600",
+            iconName = "t600",
+            fallbackEmoji = "600",
             condition = { state ->
-                state.stat("highest_tier") >= 501
+                state.stat("highest_tier") >= 600
             }
         ),
         Achievement(
-            visibleAfter = "tier_501",
+            visibleAfter = "tier_600",
+            id = "tier_700",
+            name = "Lucky number 7's",
+            description = "Reach tier 700",
+            iconName = "t700",
+            fallbackEmoji = "700",
+            condition = { state ->
+                state.stat("highest_tier") >= 700
+            }
+        ),
+        Achievement(
+            visibleAfter = "tier_700",
+            id = "tier_800",
+            name = "Smiling through the pain",
+            description = "Reach tier 800",
+            iconName = "t800",
+            fallbackEmoji = "800",
+            condition = { state ->
+                state.stat("highest_tier") >= 800
+            }
+        ),
+        Achievement(
+            visibleAfter = "tier_800",
+            id = "tier_900",
+            name = "Crowned champion",
+            description = "Reach tier 900, almost there!",
+            iconName = "t900",
+            fallbackEmoji = "900",
+            condition = { state ->
+                state.stat("highest_tier") >= 900
+            }
+        ),
+        Achievement(
+            visibleAfter = "tier_900",
+            id = "tier_1000",
+            name = "Star of the spectrum",
+            description = "Reach tier 1000, congratulations!",
+            iconName = "t1000",
+            fallbackEmoji = "1000",
+            condition = { state ->
+                state.stat("highest_tier") >= 1000
+            }
+        ),
+        Achievement(
+            visibleAfter = "tier_1001", // shows when its unlocked
+            id = "tier_1001",
+            name = "There's more?!",
+            description = "Witness the tiers looping and achieve star 1 (functionally doesnt work yet)",
+            iconName = "ach_temp",
+            fallbackEmoji = "1k+1",
+            condition = { state ->
+                state.stat("highest_tier") >= 1001
+            }
+        ),
+        Achievement(
+            visibleAfter = "tier_1001",
             id = "tier_1000",
             name = "It'll never end",
             description = "Reach tier star 2",
             iconName = "ach_temp",
             fallbackEmoji = "1k",
             condition = { state ->
-                state.stat("highest_tier") >= 1000
+                state.stat("highest_tier") >= 2001
             }
         ),
         Achievement(
@@ -208,7 +274,7 @@ object AchievementsLogic {
         Achievement(
             visibleAfter = "first_prestige",
             id = "prestige_900",
-            name = "It's over x9 blocks!",
+            name = "It's over x9 boxes!",
             description = "Hold onto over 900 prestige",
             iconName = "ach_prestige_900",
             fallbackEmoji = "P",
@@ -225,6 +291,17 @@ object AchievementsLogic {
             fallbackEmoji = "P",
             condition = { state ->
                 state.currency("prestige").compareTo(BigNumber.of(1e6)) >= 0
+            }
+        ),
+        Achievement(
+            visibleAfter = "prestige_1e6",
+            id = "prestige_10e9",
+            name = "Billionaire",
+            description = "Hold onto over 10B (1e10) prestige",
+            iconName = "ach_prestige_1e6",
+            fallbackEmoji = "P",
+            condition = { state ->
+                state.currency("prestige").compareTo(BigNumber.of(10e9)) >= 0
             }
         ),
         Achievement(

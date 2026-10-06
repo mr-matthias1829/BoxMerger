@@ -7,7 +7,11 @@ import kotlin.math.pow
 
 fun getSpawnRate(level: Int): Double {
     val x = level.toDouble()
-    return 6.0 * ((x + 9.7786) / 10.7786).pow(-1.3739)
+    val slowStart = 32.0
+    val slowFactor = 0.25   // past 32, each level counts as 0.25 of a level, SORRY NOT SORRY
+
+    val effective = if (x <= slowStart) x else slowStart + (x - slowStart) * slowFactor
+    return 6.0 * ((effective + 9.7786) / 10.7786).pow(-1.3739)
 }
 
 object GameLogic {
@@ -17,10 +21,11 @@ object GameLogic {
         id = "spawn_tier",
         name = "Spawn Tier",
         pageId = PAGE_ID,
-        baseCost = mapOf(Currencies.BOXES.id to BigNumber.of(20e3)),
+        baseCost = mapOf(Currencies.BOXES.id to BigNumber.of(10e3)),
         scalingFunction = { level ->
             when {
-                level <= 5 -> 2.25 // player catches up
+                level <= 4 -> 2.0 // player catches up
+                level <= 8 -> 2.5 // player catches up
                 level <= 10 -> 3.0 // player stays
                 level <= 19 -> 4.0 // player loses
                 level <= 100 -> 5.0

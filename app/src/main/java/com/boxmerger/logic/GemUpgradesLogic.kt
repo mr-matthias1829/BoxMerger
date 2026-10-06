@@ -26,7 +26,7 @@ object GemUpgradesLogic {
         name = "Prestige Multiplier",
         pageId = PAGE_ID,
         baseCost = mapOf(Currencies.GEM.id to BigNumber.of(5.0)),
-        scalingFunction = { 1.32 },
+        scalingFunction = { 1.29 },
         maxLevel = 500,
         effectFormula = { level -> 1.0 + (level - 1) * 0.2 },
         effectDescription = { level ->
@@ -41,19 +41,19 @@ object GemUpgradesLogic {
         baseCost = mapOf(Currencies.GEM.id to BigNumber.of(10.0)),
         scalingFunction = { level ->
             when {
-                level <= 10 -> 1.1
-                level <= 20 -> 1.15
-                level <= 30 -> 1.2
-                level <= 40 -> 1.26
-                level <= 50 -> 1.32
-                level <= 60 -> 1.39
-                level <= 70 -> 1.45
-                else -> 1.55
+                level <= 5 -> 1.1
+                level <= 10 -> 1.15
+                level <= 15 -> 1.4
+                level <= 20 -> 1.52
+                level <= 25 -> 2.15
+                level <= 30 -> 2.3
+                level <= 35 -> 3.5
+                else -> 4.0
             }},
-        maxLevel = 80,
-        effectFormula = { level -> minOf(10.0, 2.0 + (level - 1) * 0.1) },
+        maxLevel = 40,
+        effectFormula = { level -> minOf(10.0, 2.0 + (level - 1) * 0.2) },
         effectDescription = { level ->
-            "Chance: ${formatPercent(minOf(10.0, 2.0 + (level - 1) * 0.1))}%"
+            "Chance: ${formatPercent(minOf(10.0, 2.0 + (level - 1) * 0.2))}%"
         }
     )
 
@@ -61,21 +61,21 @@ object GemUpgradesLogic {
         id = "gem_auto_speed",
         name = "Auto-Merger Speed",
         pageId = PAGE_ID,
-        baseCost = mapOf(Currencies.GEM.id to BigNumber.of(25.0)),
+        baseCost = mapOf(Currencies.GEM.id to BigNumber.of(20.0)),
         scalingFunction = { level ->
             when {
-                level <= 15 -> 1.1
-                level <= 25 -> 1.16
-                level <= 40 -> 1.21
-                level <= 60 -> 1.32
-                else -> 1.43
+                level <= 15 -> 1.09
+                level <= 25 -> 1.145
+                level <= 40 -> 1.19
+                level <= 60 -> 1.28
+                else -> 1.39
             }},
         maxLevel = 75,
         effectFormula = { level ->
-            6.0 * ((level + 10) / 10.7786).pow(-1.3739)
+            6.0 * ((level + 10) / 10.0).pow(-1.3739)
         },
         effectDescription = { level ->
-            val sec = 6.0 * ((level + 10) / 10.7786).pow(-1.3739)
+            val sec = 6.0 * ((level + 10) / 10.0).pow(-1.3739)
             if (sec >= 1.0) {
                 "Auto-Merger Speed: ${formatSeconds(sec)}s"
             } else {
