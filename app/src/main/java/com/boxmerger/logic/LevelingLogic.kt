@@ -57,19 +57,21 @@ object LevelingLogic {
 
     /**
      * Permanent prestige-gain multiplier gained by resetting at [level].
-     * Level 50 -> +1.00, Level 100 -> +2.00.
+     * Level 50 -> +1.25, Level 75 -> +1.875, then x1.008 compounding per level beyond 75.
+     * The game ADDS this onto the boost you already have (see performLevelReset).
      * Returns Double because it's a small percentage boost.
      */
     fun levelResetPrestigeBoostGain(level: Int): Double {
-        return 0.025 * level
+        val base = 0.025 * level
+        // Past level 75, every extra level compounds the boost by x1.008
+        return if (level <= 75) base else base * 1.008.pow(level - 75.0)
     }
 
     /**
-     * Formats the reset boost as a percentage string.
+     * Formats the reset boost as an added multiplier, e.g. "+1.25x".
      */
     fun formatResetPrestigeBoost(level: Int): String {
-        val pct = (levelResetPrestigeBoostGain(level) * 100)
-        return "+${formatPercent(pct)}%"
+        return "+${formatMultiplier(levelResetPrestigeBoostGain(level))}x"
     }
 
     /**

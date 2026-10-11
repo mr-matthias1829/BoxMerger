@@ -19,7 +19,11 @@ class PageTab(
     val row: Int = 0,
     val isVisible: Condition = { true },
     /** Currencies to show in top bar on this page. Empty = use default. */
-    val topBarCurrencies: List<Currency> = emptyList()
+    val topBarCurrencies: List<Currency> = emptyList(),
+
+    /** sub-pages */
+    val parentId: String? = null,      // non-null = sub-page, not shown in the bottom rows
+    val description: String = ""       // shown on the hub card
 )
 
 /**

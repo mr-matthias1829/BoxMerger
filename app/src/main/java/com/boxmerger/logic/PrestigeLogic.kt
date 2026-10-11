@@ -42,7 +42,11 @@ object PrestigeLogic {
         name = "Gem Multiplier",
         pageId = PAGE_ID,
         baseCost = mapOf(Currencies.PRESTIGE.id to BigNumber.of(50.0)),
-        scalingFunction = { 1.7 },
+        scalingFunction = { level ->
+            when {
+                level <= 75 -> 1.7
+                else -> 3.23
+            } },
         maxLevel = 500,
         effectFormula = { level -> 1.1.pow(level.toDouble()) },
         effectDescription = { level ->

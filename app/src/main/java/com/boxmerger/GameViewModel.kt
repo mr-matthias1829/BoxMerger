@@ -15,7 +15,9 @@ import com.boxmerger.logic.GameLogic
 import com.boxmerger.logic.GemUpgradesLogic
 import com.boxmerger.logic.LevelingLogic
 import com.boxmerger.logic.PrestigeLogic
+import com.boxmerger.logic.EnergyLogic
 import com.boxmerger.logic.SpecialityLogic
+import com.boxmerger.logic.SteelLogic
 import com.boxmerger.model.*
 import com.boxmerger.ui.PopupEvent
 import com.boxmerger.ui.achievementPopup
@@ -62,6 +64,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     var levelResets by mutableStateOf(0)
         private set
 
+    // Highest prestige balance ever held. BigNumber, so it can't live in the Long-only stats.
+    var highestPrestige by mutableStateOf(BigNumber.ZERO)
+        private set
+
     var totalPrestiges: Int
         get() = stats.get("total_prestiges").toInt()
         private set(value) { stats.set("total_prestiges", value.toLong()) }
@@ -96,6 +102,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         upgradeManager.registerAll(GemUpgradesLogic.ALL)
         upgradeManager.registerAll(PrestigeLogic.ALL)
         upgradeManager.registerAll(SpecialityLogic.ALL)
+        upgradeManager.registerAll(SteelLogic.ALL)
+        upgradeManager.registerAll(EnergyLogic.ALL)
         achievementManager.registerAll(AchievementsLogic.ALL)
     }
 
@@ -142,6 +150,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (income.compareTo(BigNumber.ZERO) > 0) {
                     currencyManager.add(Currencies.BOXES, income)
                 }
+                // Energy generates by itself once unlocked (2h playtime)
+                if (hasFlag("energy_unlocked")) {
+                    currencyManager.add(Currencies.ENERGY, Gains.energyPerSecond())
+                }
             }
         }
     }
@@ -166,7 +178,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun getSpawnIntervalMs(): Long {
         val rateLevel = upgradeManager.getLevel(GameLogic.spawnRateUpgrade.id)
-        val seconds = GameLogic.spawnRateUpgrade.effectFormula(rateLevel)
+        val seconds = GameLogic.spawnRateUpgrade.effectFormula(rateLevel) * Gains.energySpawnIntervalMultiplier()
         return maxOf(100L, (seconds * 1000.0).toLong())
     }
 
@@ -192,8 +204,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Leveling ---
 
-    fun mergesNeededForNextLevel(level: Int = playerLevel): Long =
-        LevelingLogic.mergesNeededForNextLevel(level)
+    /** Final merges needed for a level-up, after the steel "faster level-ups" upgrade. */
+    fun mergesNeededForNextLevel(level: Int = playerLevel): Long {
+        val base = LevelingLogic.mergesNeededForNextLevel(level)
+        val reduced = Math.ceil(base * Gains.levelUpMergeMultiplier()).toLong()
+        return maxOf(1L, reduced)
+    }
 
     private fun processLevelingMerge() {
         levelingMerges++
@@ -203,9 +219,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             playerLevel++
             stats.set("player_level", playerLevel.toLong())
 
+            // Decide the popup BEFORE updating the record, so the level-up that
+            // sets a new record below level 25 still gets its popup.
+            val showPopup = needed > 25 || stats.get("highest_level") < 25
+            if (playerLevel > stats.get("highest_level")) {
+                stats.set("highest_level", playerLevel.toLong())
+            }
+
             val reward = Gains.levelUpGems(playerLevel)
             currencyManager.add(Currencies.GEM, reward)
-            popupQueue.add(levelUpPopup(playerLevel, reward, nextPopupId++))
+            if (showPopup) {
+                popupQueue.add(levelUpPopup(playerLevel, reward, nextPopupId++))
+            }
 
             needed = mergesNeededForNextLevel(playerLevel)
         }
@@ -245,8 +270,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             if (isAuto) {
                 stats.increment("auto_merges")
+                checkAutoSteel(newTier)
             } else {
                 stats.increment("manual_merges")
+                collectSteel(Gains.steelPerManualMerge(newTier))
             }
             stats.increment("total_merges")
 
@@ -275,6 +302,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- Steel ---
+
+    /** Auto merges only give steel when the chance roll succeeds. */
+    private fun checkAutoSteel(newTier: Int) {
+        val chance = Gains.steelAutoChance()
+        if (chance > 0.0 && Random.nextDouble() * 100.0 < chance) {
+            collectSteel(Gains.steelPerAutoMerge(newTier))
+        }
+    }
+
+    /** Every steel payout goes through here, so "steel_collects" counts raw payouts. */
+    private fun collectSteel(amount: BigNumber) {
+        if (!hasFlag("steel_unlocked")) return
+        currencyManager.add(Currencies.STEEL, amount)
+        stats.increment("steel_collects")
+    }
+
     // --- Auto merger ---
 
     private var autoMergerJob: Job? = null
@@ -284,8 +328,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             while (true) {
                 val speedSeconds = GemUpgradesLogic.gemAutoSpeedUpgrade.effectFormula(
                     upgradeManager.getLevel(GemUpgradesLogic.gemAutoSpeedUpgrade.id)
-                )
-                delay((speedSeconds * 1000.0).toLong())
+                ) * Gains.energyAutoMergeDelayMultiplier()
+                delay(maxOf(50L, (speedSeconds * 1000.0).toLong()))
 
                 if (autoMergerUnlocked && autoMergerEnabled) {
                     performAutoMerge()
@@ -375,6 +419,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (gain.compareTo(BigNumber.ZERO) > 0) {
             currencyManager.add(Currencies.PRESTIGE, gain)
             totalPrestiges = totalPrestiges + 1
+            val heldNow = currencyManager.getBalance(Currencies.PRESTIGE)
+            if (heldNow > highestPrestige) highestPrestige = heldNow
             currencyManager.resetForPrestige()
             upgradeManager.setLevel(GameLogic.spawnTierUpgrade.id, 0)
             upgradeManager.setLevel(GameLogic.spawnRateUpgrade.id, 0)
@@ -419,6 +465,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         editor.putLong("leveling_merges", levelingMerges)
         editor.putFloat("level_reset_prestige_boost", levelResetPrestigeBoost.toFloat())
         editor.putInt("level_resets", levelResets)
+        editor.putString("highest_prestige_m", highestPrestige.mantissa.toString())
+        editor.putInt("highest_prestige_e", highestPrestige.exponent)
 
         for ((id, level) in upgradeManager.getAllLevels()) {
             editor.putInt("upgrade_level_$id", level)
@@ -466,6 +514,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         levelResetPrestigeBoost = prefs.getFloat("level_reset_prestige_boost", 0f).toDouble()
         levelResets = prefs.getInt("level_resets", 0)
         stats.set("player_level", playerLevel.toLong())
+        if (playerLevel > stats.get("highest_level")) {
+            stats.set("highest_level", playerLevel.toLong())
+        }
+
+        val hpM = prefs.getString("highest_prestige_m", "0.0")!!.toDouble()
+        val hpE = prefs.getInt("highest_prestige_e", 0)
+        val savedHighest = BigNumber.of(hpM, hpE)
+        val heldPrestige = currencyManager.getBalance(Currencies.PRESTIGE)
+        highestPrestige = if (heldPrestige > savedHighest) heldPrestige else savedHighest
 
         val levels = mutableMapOf<String, Int>()
         for (key in allPrefs.keys) {
@@ -520,6 +577,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         levelingMerges = 0L
         levelResetPrestigeBoost = 0.0
         levelResets = 0
+        highestPrestige = BigNumber.ZERO
         for (i in _gridItems.indices) {
             _gridItems[i] = null
         }

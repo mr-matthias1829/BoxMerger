@@ -14,7 +14,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boxmerger.GameViewModel
+import com.boxmerger.logic.Gains
 import com.boxmerger.logic.PrestigeLogic
+import com.boxmerger.logic.formatPercent
 import com.boxmerger.model.Currencies
 
 @Composable
@@ -22,6 +24,9 @@ fun PrestigeScreen(viewModel: GameViewModel) {
     val scrollState = rememberScrollState()
     val gain = viewModel.calculatePrestigeGain()
     val canPrestige = viewModel.canPrestige
+
+    // Boost per held prestige, including the "Stronger Prestige" energy upgrade
+    val heldBoostPct = formatPercent(Gains.prestigeHeldBoostPerUnit() * 100.0)
 
     Column(
         modifier = Modifier
@@ -37,7 +42,7 @@ fun PrestigeScreen(viewModel: GameViewModel) {
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Prestige resets your grid, boxes, and standard upgrades (Spawn Tier & Spawn Rate) in exchange for Prestige currency. Holding Prestige also grants +1% boost to boxes per Prestige.",
+            text = "Prestige resets your grid, boxes, and standard upgrades (Spawn Tier & Spawn Rate) in exchange for Prestige currency. Holding Prestige also grants +$heldBoostPct% boost to boxes per Prestige.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant

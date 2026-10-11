@@ -25,7 +25,11 @@ object Currencies {
     val GEM = Currency("gem", "Gems", "icon_gem", "💎")
     val PRESTIGE = Currency("prestige", "Prestige", "icon_prestige", "⚡")
 
-    val ALL = listOf(BOXES, GEM, PRESTIGE)
+    val STEEL = Currency("steel", "Steel", "icon_steel", "🔩")
+
+    val ENERGY = Currency("energy", "Energy", "icon_energy", "🔋")
+
+    val ALL = listOf(BOXES, GEM, PRESTIGE, STEEL, ENERGY)
 
     fun byId(id: String): Currency? = ALL.firstOrNull { it.id == id }
 }

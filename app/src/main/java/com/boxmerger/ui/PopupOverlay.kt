@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.boxmerger.logic.LevelingLogic
+import com.boxmerger.logic.formatMultiplier
 import com.boxmerger.model.Achievement
 import com.boxmerger.model.BigNumber
 import kotlinx.coroutines.delay
@@ -192,14 +193,14 @@ fun achievementPopup(achievement: Achievement, id: Long): PopupEvent {
  * Builds a PopupEvent for a level-up.
  */
 fun levelUpPopup(level: Int, gemsAwarded: BigNumber, id: Long): PopupEvent {
-    val blockBoostPct = ((LevelingLogic.blockEarningsMultiplier(level) - 1.0) * 100).toInt()
+    val blockBoost = formatMultiplier(LevelingLogic.blockEarningsMultiplier(level))
     val gemText = formatRewardAmount(gemsAwarded)
 
     return PopupEvent(
         id = id,
         title = "LEVEL UP!",
         headline = "You are now level $level!",
-        subtitle = "+$gemText Gems | +$blockBoostPct% Block Boost",
+        subtitle = "+$gemText Gems | x$blockBoost Box Boost",
         durationMs = 3000L,
         accentColor = null,
         icon = { size ->

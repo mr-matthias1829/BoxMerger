@@ -28,9 +28,9 @@ object GameLogic {
                 level <= 8 -> 2.5 // player catches up
                 level <= 10 -> 3.0 // player stays
                 level <= 19 -> 4.0 // player loses
-                level <= 100 -> 5.0
-                level <= 200 -> 6.0
-                level <= 500 -> 7.0
+                level <= 100 -> 4.6
+                level <= 200 -> 5.2
+                level <= 500 -> 5.8
                 else -> 8.0
             }
         },
@@ -52,7 +52,14 @@ object GameLogic {
             when {
                 level <= 10 -> 2.2
                 level <= 20 -> 3.1
-                else -> 4.3
+                level <= 32 -> 4.3
+                level <= 50 -> 6.3
+                level <= 80 -> 8.9
+                level <= 100 -> 9.2
+                level <= 130 -> 9.6
+                level <= 170 -> 10.1
+                level <= 215 -> 11.2
+                else -> 12.78
             }
         },
         maxLevel = 10000,

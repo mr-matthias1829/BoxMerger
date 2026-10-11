@@ -48,9 +48,10 @@ object Gains {
     // -------------------------------------------------------------------------
 
     fun gemMultiplier(): Double {
-        return PrestigeLogic.presMoreGemsUpgrade.effectFormula(
+        val presGems = PrestigeLogic.presMoreGemsUpgrade.effectFormula(
             upgradeManager.getLevel(PrestigeLogic.presMoreGemsUpgrade.id)
         )
+        return presGems * steelGemMultiplier()
     }
 
     fun boxMultiplier(): Double {
@@ -62,8 +63,8 @@ object Gains {
         )
         val levelBoost = LevelingLogic.blockEarningsMultiplier(playerLevelProvider())
         val prestigeHeld = currencyManager.getBalance(Currencies.PRESTIGE).toDouble()
-        val prestigeBoost = 1.0 + 0.01 * prestigeHeld
-        return gemBoxes * presBoxes * levelBoost * prestigeBoost
+        val prestigeBoost = 1.0 + prestigeHeldBoostPerUnit() * prestigeHeld
+        return gemBoxes * presBoxes * levelBoost * prestigeBoost * steelBoxMultiplier()
     }
 
     fun prestigeMultiplier(): Double {
@@ -75,6 +76,123 @@ object Gains {
         )
         val resetBoost = 1.0 + levelResetPrestigeBoostProvider()
         return gemPrestige * presPrestige * resetBoost
+    }
+
+    // -------------------------------------------------------------------------
+    // Steel
+    // -------------------------------------------------------------------------
+
+    // Past this tier, every extra tier adds STEEL_TIER_BONUS to the base steel of a merge.
+    private const val STEEL_TIER_BONUS_START = 100
+    private const val STEEL_TIER_BONUS = 0.1
+
+    /** Steel upgrade: compounding steel value. */
+    fun steelValueMultiplier(): Double {
+        val own = SteelLogic.steelValueUpgrade.effectFormula(
+            upgradeManager.getLevel(SteelLogic.steelValueUpgrade.id)
+        )
+        val fromEnergy = SpecialityLogic.steelFromEnergyUpgrade.effectFormula(
+            upgradeManager.getLevel(SpecialityLogic.steelFromEnergyUpgrade.id)
+        )
+        return own * fromEnergy
+    }
+
+    /** Steel upgrade: box multiplier. */
+    fun steelBoxMultiplier(): Double {
+        return SteelLogic.steelMoreBoxesUpgrade.effectFormula(
+            upgradeManager.getLevel(SteelLogic.steelMoreBoxesUpgrade.id)
+        )
+    }
+
+    /** Steel upgrade: gem multiplier. */
+    fun steelGemMultiplier(): Double {
+        return SteelLogic.steelMoreGemsUpgrade.effectFormula(
+            upgradeManager.getLevel(SteelLogic.steelMoreGemsUpgrade.id)
+        )
+    }
+
+    /**
+     * Steel upgrade: faster level-ups. Multiplier (<= 1.0) applied to the
+     * merges needed per level-up. Applied in GameViewModel.mergesNeededForNextLevel.
+     */
+    fun levelUpMergeMultiplier(): Double {
+        return SteelLogic.steelFasterLevelsUpgrade.effectFormula(
+            upgradeManager.getLevel(SteelLogic.steelFasterLevelsUpgrade.id)
+        )
+    }
+
+    /** Base steel of a merge that produced [newTier], before the value upgrade. */
+    fun steelBaseValue(newTier: Int): Double {
+        val extraTiers = maxOf(0, newTier - STEEL_TIER_BONUS_START)
+        return 1.0 + STEEL_TIER_BONUS * extraTiers
+    }
+
+    /** Steel for one manual merge that produced [newTier], after all multipliers. */
+    fun steelPerManualMerge(newTier: Int): BigNumber {
+        return BigNumber.of(steelBaseValue(newTier) * steelValueMultiplier())
+    }
+
+    /** Chance (0..100) that an auto merge gives steel. 0 until the upgrade is bought. */
+    fun steelAutoChance(): Double {
+        val def = SpecialityLogic.steelAutoChanceUpgrade
+        return def.effectFormula(upgradeManager.getLevel(def.id))
+    }
+
+    /** Fraction (0.02 = 2%) of a manual merge's steel that a successful auto roll gives. */
+    fun steelAutoFraction(): Double {
+        val def = SpecialityLogic.steelAutoValueUpgrade
+        return def.effectFormula(upgradeManager.getLevel(def.id))
+    }
+
+    /** Steel given when an auto merge produced [newTier] AND the chance roll succeeded. */
+    fun steelPerAutoMerge(newTier: Int): BigNumber {
+        return steelPerManualMerge(newTier) * steelAutoFraction()
+    }
+
+    // -------------------------------------------------------------------------
+    // Energy
+    // -------------------------------------------------------------------------
+
+    private const val ENERGY_BASE_PER_SECOND = 1.0
+
+    /** Energy multiplier: own upgrade x the weak steel-paid speciality one. */
+    fun energyMultiplier(): Double {
+        val own = EnergyLogic.energyMultiplierUpgrade.effectFormula(
+            upgradeManager.getLevel(EnergyLogic.energyMultiplierUpgrade.id)
+        )
+        val fromSteel = SpecialityLogic.energyFromSteelUpgrade.effectFormula(
+            upgradeManager.getLevel(SpecialityLogic.energyFromSteelUpgrade.id)
+        )
+        return own * fromSteel
+    }
+
+    /** Energy generated every second (only ticks once energy is unlocked). */
+    fun energyPerSecond(): BigNumber {
+        return BigNumber.of(ENERGY_BASE_PER_SECOND * energyMultiplier())
+    }
+
+    /** Multiplier on the box spawn interval (<= 1.0). */
+    fun energySpawnIntervalMultiplier(): Double {
+        return EnergyLogic.energyFasterSpawnsUpgrade.effectFormula(
+            upgradeManager.getLevel(EnergyLogic.energyFasterSpawnsUpgrade.id)
+        )
+    }
+
+    /** Multiplier on the auto-merger delay (<= 1.0). */
+    fun energyAutoMergeDelayMultiplier(): Double {
+        return EnergyLogic.energyFasterAutoUpgrade.effectFormula(
+            upgradeManager.getLevel(EnergyLogic.energyFasterAutoUpgrade.id)
+        )
+    }
+
+    /**
+     * Box boost each held prestige gives, as a fraction (0.01 = 1%).
+     * Base 1%, +0.5% per level of the "Stronger Prestige" energy upgrade.
+     */
+    fun prestigeHeldBoostPerUnit(): Double {
+        return EnergyLogic.energyStrongerPrestigeUpgrade.effectFormula(
+            upgradeManager.getLevel(EnergyLogic.energyStrongerPrestigeUpgrade.id)
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -137,7 +255,7 @@ object Gains {
     // Boxes above this count with reduced strength
     private val PRESTIGE_SOFTCAP = BigNumber.of(1e80)
     // 1.0 = no slowdown, lower = harder slowdown past the cap
-    private const val PRESTIGE_SOFTCAP_POWER = 0.5
+    private const val PRESTIGE_SOFTCAP_POWER = 0.78
 
     fun prestigeGain(): BigNumber {
         val boxes = currencyManager.getBalance(Currencies.BOXES)
@@ -147,7 +265,7 @@ object Gains {
 
         var effective = boxes - threshold
 
-        // Soft cap: past 1e16, only (excess ratio)^0.5 counts
+        // softcap
         if (effective > PRESTIGE_SOFTCAP) {
             effective = PRESTIGE_SOFTCAP * (effective / PRESTIGE_SOFTCAP).pow(PRESTIGE_SOFTCAP_POWER)
         }
@@ -160,6 +278,7 @@ object Gains {
 
         return inner * prestigeMultiplier()
     }
+
 
     /**
      * The chance (0..100) that a merge drops a gem.

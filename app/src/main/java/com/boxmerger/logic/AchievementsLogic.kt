@@ -85,7 +85,7 @@ object AchievementsLogic {
             visibleAfter = "tier_5",
             id = "tier_20",
             name = "Milestone",
-            description = "Reach Tier 20 and unlock prestige",
+            description = "Reach Tier 20 and unlock prestige. Nearly all tiers beyond 20 were generated at random!",
             iconName = "ach_tier_20",
             fallbackEmoji = "20",
             condition = { state ->
@@ -231,17 +231,6 @@ object AchievementsLogic {
             }
         ),
         Achievement(
-            visibleAfter = "tier_1001",
-            id = "tier_1000",
-            name = "It'll never end",
-            description = "Reach tier star 2",
-            iconName = "ach_temp",
-            fallbackEmoji = "1k",
-            condition = { state ->
-                state.stat("highest_tier") >= 2001
-            }
-        ),
-        Achievement(
             id = "first_gem",
             name = "Shiny!",
             description = "Get your first gem",
@@ -251,6 +240,7 @@ object AchievementsLogic {
                 state.currency("gem").compareTo(BigNumber.ZERO) > 0
             }
         ),
+        /* scrapped :(
         Achievement(
             visibleAfter = "first_gem",
             id = "gem_50",
@@ -262,10 +252,11 @@ object AchievementsLogic {
                 state.currency("gem").compareTo(BigNumber.of(50.0)) >= 0
             }
         ),
+         */
         Achievement(
-            visibleAfter = "gem_50",
+            visibleAfter = "first_gem",
             id = "gem_1e3",
-            name = "Super shiny!",
+            name = "Very shiny!",
             description = "Hold onto 1K (1e3) gems",
             iconName = "ach_gem",
             fallbackEmoji = "G",
@@ -276,7 +267,7 @@ object AchievementsLogic {
         Achievement(
             visibleAfter = "gem_1e3",
             id = "gem_50e6",
-            name = "Ultra shiny!",
+            name = "Super shiny!",
             description = "Hold onto 50M (50e6) gems",
             iconName = "ach_gem",
             fallbackEmoji = "G",
@@ -287,7 +278,7 @@ object AchievementsLogic {
         Achievement(
             visibleAfter = "gem_50e6",
             id = "gem_1e12",
-            name = "Blinding shining light",
+            name = "ultra shiny!",
             description = "Hold onto 1T (1e12) gems",
             iconName = "ach_gem",
             fallbackEmoji = "G",
@@ -327,23 +318,25 @@ object AchievementsLogic {
                 state.currency("prestige").compareTo(BigNumber.of(1e6)) >= 0
             }
         ),
+        /* scrapped :(
         Achievement(
             visibleAfter = "prestige_1e6",
             id = "prestige_100e9",
             name = "Billionaire",
             description = "Hold onto over 100B (1e11) prestige",
-            iconName = "ach_prestige_1e6",
+            iconName = "ach_temp",
             fallbackEmoji = "P",
             condition = { state ->
                 state.currency("prestige").compareTo(BigNumber.of(100e9)) >= 0
             }
         ),
+         */
         Achievement(
-            visibleAfter = "prestige_100e9",
+            visibleAfter = "prestige_1e6",
             id = "prestige_10e15",
-            name = "Prestige to last a lifetime",
+            name = "It's slowing down",
             description = "Hold onto over 10Qa (1e16) prestige",
-            iconName = "ach_prestige_1e6",
+            iconName = "ach_temp",
             fallbackEmoji = "P",
             condition = { state ->
                 state.currency("prestige").compareTo(BigNumber.of(10e15)) >= 0
@@ -379,5 +372,38 @@ object AchievementsLogic {
             fallbackEmoji = "🤖",
             condition = { state -> state.upgradeLevel("spec_max_button") >= 1 }
         ),
+        Achievement(
+            visibleAfter = "first_merge",
+            id = "2_hours_played",
+            name = "Time flies",
+            description = "Play for 2 hours and unlock Energy",
+            iconName = "ach_temp",
+            fallbackEmoji = "🔋",
+            condition = { state -> state.stat("playtime_seconds") >= 7200 },
+            onUnlock = { vm -> vm.setFlag("energy_unlocked") }
+        ),
+        Achievement(
+            visibleAfter = "3000_merges",
+            id = "7000_manual_merges",
+            name = "Manual labor",
+            description = "Have 7000 manual merges and unlock Steel",
+            iconName = "ach_temp",
+            fallbackEmoji = "🔀",
+            condition = { state ->
+                state.stat("manual_merges") >= 7000
+            },
+            onUnlock = { vm -> vm.setFlag("steel_unlocked") }
+        ),
+        /* scrapped :(
+        Achievement(
+            visibleAfter = "20_chance_double_spawn",
+            id = "20_chance_double_spawn",
+            name = "Still not enough",
+            description = "Reach 20% double spawn chance",
+            iconName = "ach_temp",
+            fallbackEmoji = "🤖",
+            condition = { state -> state.upgradeLevel("spec_double_spawn") >= 21 }
+        ),
+         */
     )
 }

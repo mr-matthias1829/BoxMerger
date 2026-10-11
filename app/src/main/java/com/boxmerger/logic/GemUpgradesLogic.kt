@@ -42,11 +42,14 @@ object GemUpgradesLogic {
         scalingFunction = { level ->
             when {
                 level <= 5 -> 1.1
-                level <= 10 -> 1.15
+                level < 10 -> 1.15
+                level == 10 -> 5.0
                 level <= 15 -> 1.4
-                level <= 20 -> 1.52
+                level < 20 -> 1.52
+                level == 20 -> 25.0
                 level <= 25 -> 2.15
-                level <= 30 -> 2.3
+                level < 30 -> 2.3
+                level == 30 -> 15.0
                 level <= 35 -> 3.5
                 else -> 4.0
             }},
@@ -70,12 +73,12 @@ object GemUpgradesLogic {
                 level <= 60 -> 1.28
                 else -> 1.39
             }},
-        maxLevel = 75,
+        maxLevel = 50,
         effectFormula = { level ->
-            5.5 * ((level + 10) / 10.0).pow(-1.3739)
+            5.5 * ((level + 10) / 10.0).pow(-1.33)
         },
         effectDescription = { level ->
-            val sec = 5.5 * ((level + 10) / 10.0).pow(-1.3739)
+            val sec = 5.5 * ((level + 10) / 10.0).pow(-1.33)
             if (sec >= 1.0) {
                 "Auto-Merger Speed: ${formatSeconds(sec)}s"
             } else {

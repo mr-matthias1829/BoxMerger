@@ -13,7 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.boxmerger.GameViewModel
 import com.boxmerger.logic.LevelingLogic
-import com.boxmerger.logic.formatPercent
+import com.boxmerger.logic.formatMultiplier
 import com.boxmerger.model.Currencies
 
 @Composable
@@ -153,9 +153,9 @@ fun LevelingScreen(viewModel: GameViewModel) {
                         size = 24.dp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    val blockPct = (LevelingLogic.blockEarningsMultiplier(level) - 1.0) * 100
+                    val blockMult = LevelingLogic.blockEarningsMultiplier(level)
                     Text(
-                        text = "Box Boost: +${formatPercent(blockPct)}%",
+                        text = "Box Boost: x${formatMultiplier(blockMult)}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -170,9 +170,10 @@ fun LevelingScreen(viewModel: GameViewModel) {
                                 size = 24.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            val boostPct = viewModel.levelResetPrestigeBoost * 100
+                            // The stored boost is additive on top of x1, so the multiplier is 1 + boost
+                            val prestigeMult = 1.0 + viewModel.levelResetPrestigeBoost
                             Text(
-                                text = "Prestige Boost: +${formatPercent(boostPct)}%",
+                                text = "Prestige Boost: x${formatMultiplier(prestigeMult)}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold
                             )
